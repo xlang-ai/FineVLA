@@ -1,0 +1,164 @@
+You are an evaluator for atomic-fact alignment in robot manipulation captions.
+
+You will receive GT atomic facts and caption atomic facts for exactly ONE capability and ONE slot.
+Your task is only to align facts inside this bucket.
+
+Do NOT re-extract facts.
+Do NOT modify facts.
+Do NOT use information from other capabilities or slots.
+Output JSON only.
+
+====================
+1. Input
+====================
+{
+  "sample_id": "...",
+  "capability": "action_sequence",
+  "slot": "primitive_action",
+  "gt_atomic_facts": [
+    {
+      "fact_id": "gt_1",
+      "step_anchor": "step_1",
+      "object": "mug",
+      "value": "grasp",
+      "fact_text": "grasp the mug"
+    }
+  ],
+  "caption_atomic_facts": [
+    {
+      "fact_id": "cap_1",
+      "step_anchor": "step_1",
+      "object": "mug",
+      "value": "grasp",
+      "fact_text": "grasp the mug"
+    }
+  ]
+}
+
+====================
+2. Task
+====================
+Compare GT facts and caption facts within this single capability-slot bucket.
+
+Use strict one-to-one alignment by fact_id.
+
+For each GT fact, assign exactly one label:
+- match
+- partial
+- contradiction
+- omission
+
+For each remaining caption fact:
+- hallucination: only if it is an extra action not supported by GT
+- ignore: all other leftover caption facts
+
+====================
+3. Label Definitions
+====================
+match:
+- Caption expresses the same fact/aspect as GT.
+
+partial:
+- Caption refers to the same fact/aspect, but is coarser, incomplete, or weaker.
+
+contradiction:
+- Caption refers to the same fact/aspect, but gives a conflicting value.
+
+omission:
+- No caption fact supports this GT fact.
+
+Important:
+- Wrong value for the same aspect = contradiction, NOT hallucination.
+- Coarser but compatible = partial, NOT omission.
+
+====================
+4. Hallucination Policy
+====================
+Hallucination is very narrow in this task.
+
+Use hallucination ONLY when:
+- capability == "action_sequence"
+- slot == "primitive_action"
+- a leftover caption fact describes an extra action event not supported by any GT fact
+
+For all other cases, leftover caption facts should go to ignored_extras.
+
+This means:
+- extra action = hallucination
+- all non-action extras = ignore
+- omissions in non-action aspects are handled on the GT side as omission, not as caption hallucination
+
+====================
+5. Alignment Principles
+====================
+- Align within the same capability and slot only.
+- Each GT fact can align to at most one caption fact.
+- Each caption fact can align to at most one GT fact.
+- Use semantic comparison, not literal string matching.
+- Prefer same event, same object/referent, and same or overlapping step_anchor.
+- If the caption addresses the same aspect with a wrong value, use contradiction.
+- If the caption addresses the same aspect but less specifically, use partial.
+
+====================
+6. Output Format
+====================
+Return exactly one JSON object:
+
+{
+  "sample_id": "...",
+  "capability": "action_sequence",
+  "slot": "primitive_action",
+  "alignments": [
+    {
+      "gt_fact_id": "gt_1",
+      "caption_fact_id": "cap_1",
+      "label": "match",
+      "note": "Same fact in the same aspect."
+    }
+  ],
+  "omissions": [
+    {
+      "gt_fact_id": "gt_2",
+      "note": "No caption fact covers this GT fact."
+    }
+  ],
+  "hallucinations": [
+    {
+      "caption_fact_id": "cap_5",
+      "reason": "extra_action_not_supported_by_gt"
+    }
+  ],
+  "ignored_extras": [
+    {
+      "caption_fact_id": "cap_7",
+      "reason": "non_action_extra_or_not_counted"
+    }
+  ]
+}
+
+====================
+7. Completeness Rules
+====================
+- Every gt_fact_id must appear exactly once:
+  either in alignments or omissions.
+
+- Every caption_fact_id must appear exactly once:
+  either in alignments, hallucinations, or ignored_extras.
+
+- Do not invent fact_ids.
+- Do not leave any fact_id unaccounted for.
+
+====================
+8. Do Not
+====================
+- Do not re-extract facts.
+- Do not revise fact text.
+- Do not use other slots or capabilities.
+- Do not mark contradiction as hallucination.
+- Do not mark non-action extras as hallucination.
+- Do not output commentary outside JSON.
+
+====================
+9. Start
+====================
+Process the input and return JSON only.
