@@ -1,0 +1,42 @@
+ h2{
+  font-weight:bold !important;
+ }
+ h4{
+    margin-left:15px !important;
+    font-weight:normal !important;
+ }
+
+ h5{
+    margin-left:20px !important;
+    color:black !important;
+    text-transform:none !important;
+    font-weight:normal !important;
+ }
+
+ .image-collection{
+  display:flex;
+  align-items:center;
+  flex-wrap: wrap;
+  gap:10px;
+ }
+ .image-container {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .step-image {
+    height: 250px !important;
+  }
+  
+  .step-tag {
+    position: absolute;
+    bottom: 0px; 
+    left: 0px; 
+    width: 45px;
+    font-size:small;
+    font-weight:bold;
+    background-color: red; /* Semi-transparent black */
+    color: white;
+    padding: 0.5px;
+    text-align: center;
+  }

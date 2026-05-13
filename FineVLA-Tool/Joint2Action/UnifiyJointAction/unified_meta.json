@@ -1,0 +1,64 @@
+{
+    "description": "Unified state/action representation metadata",
+    "unified_dim": 80,
+    "target_types": {
+        "joint_state": "abs_joint",
+        "eef_state": "abs_quat",
+        "joint_action": "abs_joint",
+        "eef_action": "abs_quat"
+    },
+    "slot_layout": {
+        "left_joint": {
+            "start": 0,
+            "end": 7,
+            "dim": 7
+        },
+        "left_eef": {
+            "start": 7,
+            "end": 16,
+            "dim": 9
+        },
+        "left_gripper": {
+            "start": 16,
+            "end": 17,
+            "dim": 1
+        },
+        "left_hand": {
+            "start": 17,
+            "end": 29,
+            "dim": 12
+        },
+        "right_joint": {
+            "start": 29,
+            "end": 36,
+            "dim": 7
+        },
+        "right_eef": {
+            "start": 36,
+            "end": 45,
+            "dim": 9
+        },
+        "right_gripper": {
+            "start": 45,
+            "end": 46,
+            "dim": 1
+        },
+        "right_hand": {
+            "start": 46,
+            "end": 58,
+            "dim": 12
+        },
+        "reserved": {
+            "start": 58,
+            "end": 80,
+            "dim": 22
+        }
+    },
+    "columns": {
+        "frame_index": "int64, original frame index from the dataset",
+        "state_unified": "list<float32>[80], unified state vector",
+        "action_unified": "list<float32>[80], unified action vector",
+        "mask_state": "list<bool>[80], True where state has valid data",
+        "mask_action": "list<bool>[80], True where action has valid data"
+    }
+}

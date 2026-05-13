@@ -1,0 +1,54 @@
+{
+    "state": {
+        "left_joint": {
+            "original_key": "observation.state.left_arm",
+            "type": "abs_joint"
+        },
+        "left_eef": {
+            "original_key": "observation.state.left_ee_pose",
+            "type": "abs_rotvec"
+        },
+        "left_gripper": {
+            "original_key": "observation.state.left_gripper",
+            "type": "abs_joint"
+        },
+        "right_joint": {
+            "original_key": "observation.state.right_arm",
+            "type": "abs_joint"
+        },
+        "right_eef": {
+            "original_key": "observation.state.right_ee_pose",
+            "type": "abs_rotvec"
+        },
+        "right_gripper": {
+            "original_key": "observation.state.right_gripper",
+            "type": "abs_joint"
+        }
+    },
+    "action": {
+        "left_joint": {
+            "original_key": "action.left_arm",
+            "type": "abs_joint"
+        },
+        "left_eef": {
+            "original_key": "action.left_ee_pose",
+            "type": "abs_rotvec"
+        },
+        "left_gripper": {
+            "original_key": "action.left_gripper",
+            "type": "abs_joint"
+        },
+        "right_joint": {
+            "original_key": "action.right_arm",
+            "type": "abs_joint"
+        },
+        "right_eef": {
+            "original_key": "action.right_ee_pose",
+            "type": "abs_rotvec"
+        },
+        "right_gripper": {
+            "original_key": "action.right_gripper",
+            "type": "abs_joint"
+        }
+    }
+}

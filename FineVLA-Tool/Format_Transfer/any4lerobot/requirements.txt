@@ -1,0 +1,39 @@
+# Any4LeRobot 环境依赖
+# 环境名建议: any4lerobot
+# Python 建议: 3.10 或 3.11（与 LeRobot 兼容）
+
+# ========== 核心依赖（必装） ==========
+# LeRobot 官方: https://github.com/huggingface/lerobot
+lerobot>=0.4.0
+
+# 数据处理与并行
+numpy>=1.24.0
+pandas>=2.0.0
+h5py>=3.8.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
+tqdm>=4.65.0
+termcolor>=2.3.0
+
+# RoboMIND / AgiBot 转换用
+ray[default]>=2.0.0
+
+# ========== OpenX / LeRobot2RLDS 转换（按需） ==========
+# 若使用 openx2lerobot 或 lerobot2rlds，需取消下面注释：
+# tensorflow>=2.14.0
+# tensorflow-datasets>=4.9.0
+# apache-beam>=2.50.0  # 仅 lerobot2rlds 需要
+
+# ========== LIBERO 转换（按需） ==========
+# 若使用 libero2lerobot，需额外安装 datatrove，并参考 LIBERO 官方安装：
+# pip install -U datatrove
+# pip install -U "datatrove[ray]"  # 可选，加速
+
+# ========== 数据集版本转换（按需） ==========
+# ds_version_convert 各子模块可能用到：
+# datasets  # v21_to_v30 等
+# huggingface_hub
+# pyarrow
+# jsonlines
+# safetensors  # v16_to_v20
+# requests

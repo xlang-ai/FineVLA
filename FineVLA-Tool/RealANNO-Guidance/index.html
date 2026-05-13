@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="icon" href="./assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.35">
+    
+    
+      
+        <title>标注规范</title>
+      
+    
+    
+      <link rel="stylesheet" href="./assets/stylesheets/main.35f28582.min.css">
+      
+        
+        <link rel="stylesheet" href="./assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+      
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#recruitment-requirements" class="md-skip">
+          跳到内容
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="index.html" title="RealANNO 机器人数据标注教程" class="md-header__button md-logo" aria-label="RealANNO 机器人数据标注教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RealANNO 机器人数据标注教程
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            标注手册
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="RealANNO 机器人数据标注教程" class="md-nav__button md-logo" aria-label="RealANNO 机器人数据标注教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RealANNO 机器人数据标注教程
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    <li class="md-nav__item">
+      <a href="#recruitment-requirements" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    招募要求
+  </span>
+
+      </a>
+    </li>
+
+    <li class="md-nav__item md-nav__item--nested md-nav__item--active">
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__nav_standard" checked>
+      <label class="md-nav__link" for="__nav_standard" id="__nav_standard_label" tabindex="0">
+
+  <span class="md-ellipsis">
+    标注规范
+  </span>
+
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_standard_label" aria-expanded="true">
+        <label class="md-nav__title" for="__nav_standard">
+          <span class="md-nav__icon md-icon"></span>
+          标注规范
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          <li class="md-nav__item md-nav__item--nested">
+            <input class="md-nav__toggle md-toggle" type="checkbox" id="__nav_basic" checked>
+            <label class="md-nav__link" for="__nav_basic" id="__nav_basic_label" tabindex="0">
+
+  <span class="md-ellipsis">
+    基础共识
+  </span>
+
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+            <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_basic_label" aria-expanded="true">
+              <label class="md-nav__title" for="__nav_basic">
+                <span class="md-nav__icon md-icon"></span>
+                基础共识
+              </label>
+              <ul class="md-nav__list" data-md-scrollfix>
+                <li class="md-nav__item">
+                </li>
+                <li class="md-nav__item">
+                  <a href="#directions" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    方向说明
+  </span>
+
+                  </a>
+                </li>
+                
+              </ul>
+            </nav>
+          </li>
+          <li class="md-nav__item md-nav__item--nested">
+            <input class="md-nav__toggle md-toggle" type="checkbox" id="__nav_fine" checked>
+            <label class="md-nav__link" for="__nav_fine" id="__nav_fine_label" tabindex="0">
+
+  <span class="md-ellipsis">
+    细粒度指令
+  </span>
+
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+            <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_fine_label" aria-expanded="true">
+              <label class="md-nav__title" for="__nav_fine">
+                <span class="md-nav__icon md-icon"></span>
+                细粒度指令
+              </label>
+              <ul class="md-nav__list" data-md-scrollfix>
+                <li class="md-nav__item">
+                  <a href="#fine-grained-instruction" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    概览
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#contact-region" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    1.接触区域
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#object-disambiguation" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    2.目标消歧
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#placement-specification" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    3.放置位置说明
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#action-orientation" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    4.动作与朝向
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#interaction" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    5.与其他物体的交互
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#success-failure" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    6.成功/失败语义
+  </span>
+
+                  </a>
+                </li>
+                <li class="md-nav__item">
+                  <a href="#gripper-state" class="md-nav__link">
+
+  <span class="md-ellipsis">
+    7.夹爪状态
+  </span>
+
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </li>
+          <li class="md-nav__item md-nav__item--nested">
+            <input class="md-nav__toggle md-toggle" type="checkbox" id="__nav_middle" checked>
+            <label class="md-nav__link" for="__nav_middle" id="__nav_middle_label" tabindex="0">
+
+
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </li>
+        </ul>
+      </nav>
+    </li>
+
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+    
+                  
+
+
+<h1 id="recruitment-requirements">招募要求<a class="headerlink" href="#recruitment-requirements" title="固定链接">&para;</a></h1>
+<ol>
+  <li>英语：要求有一定的英文阅读能力，能够修正AI标注错误，尤其关注<strong>空间理解</strong></li>
+  <li>耐心：能够基于标注规范认证标注</li>
+</ol>
+
+<h1 id="annotation-standard">标注规范<a class="headerlink" href="#annotation-standard" title="固定链接">&para;</a></h1>
+<h2 id="basic-consensus">基础共识<a class="headerlink" href="#basic-consensus" title="固定链接">&para;</a></h2>
+<h3 id="directions">方向说明<a class="headerlink" href="#directions" title="固定链接">&para;</a></h3>
+<div class="mdx-columns" style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap;">
+  <div style="flex:2 1 300px;">
+    <p>所有方向默认遵循<span style="color:red;font-weight:bold;">以机器人为中心的左手坐标系</span>，除非另有说明。</p>
+    <p>请从机器人的视角描述动作，以消除歧义。</p>
+  </div>
+  <div style="flex:1 1 200px;text-align:center;">
+    <img src="./assets/images/HeadFigue.png" alt="坐标轴" style="width:100%;max-width:260px;">
+  </div>
+</div>
+
+<h4 id="coordinate-system">(1) 坐标系<a class="headerlink" href="#coordinate-system" title="固定链接">&para;</a></h4>
+<ul>
+  <li><strong>原点：</strong> 机器人底座或自我视角中心。</li>
+  <li><strong>X 轴（前/后）：</strong>
+    <ul>
+      <li>正向 → 机器人直行前进<strong>(move forward)</strong>。</li>
+      <li>负向 → 机器人向后退<strong>(move backward)</strong>。</li>
+    </ul>
+  </li>
+  <li><strong>Y 轴（左/右）：</strong>
+    <ul>
+      <li>正向 → 机器人右侧<strong>(move right)</strong>。</li>
+      <li>负向 → 机器人左侧<strong>(move left)</strong>。</li>
+    </ul>
+  </li>
+  <li><strong>Z 轴（上/下）：</strong>
+    <ul>
+      <li>正向 → 向上，远离地面<strong>(move up)</strong>。</li>
+      <li>负向 → 向下，朝向地面<strong>(move down)</strong>。</li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="front-behind">(2) “前方”(front)与“后方”(back)<a class="headerlink" href="#front-behind" title="固定链接">&para;</a></h4>
+<p>离机器人更近的一侧为<strong>前方</strong>(front)；离机器人更远的一侧为<strong>后方</strong>(back)。</p>
+<figure>
+  <video src="./videos/berkeley_fanuc_manipulation_Use_the_stick_to_swipe_the_cup_ep140.mp4" controls preload="metadata" aria-label="木棍推杯"></video>
+  <figcaption>Pick up the stick and rotate it counter-clockwise to <strong>the front of</strong> cup, then lower it little bit, and rotate it clockwise, to push the cup to the <strong>further side</strong>.<br>拿起木棍并逆时针旋转到杯子的<strong>前方</strong>，然后稍微下压，再顺时针旋转，将杯子推向<strong>更远的一侧</strong>。</figcaption>
+</figure>
+
+<h4 id="ambiguity">(3) 消除歧义——使用更加靠近一侧（closer side）或更远一侧（further side）<a class="headerlink" href="#ambiguity" title="固定链接">&para;</a></h4>
+<p>当“向前”或“向后”不明确时，优先使用<strong>更近一侧</strong>(closer side)与<strong>更远一侧</strong>(further side)等相对机器人的描述。</p>
+
+<h2 id="fine-grained-instruction">细粒度指令<a class="headerlink" href="#fine-grained-instruction" title="固定链接">&para;</a></h2>
+<p>每条细粒度标注从以下七个互补维度进行评估：</p>
+<ol>
+<li>接触区域（contact region）</li>
+<li>目标消歧（object disambiguation）</li>
+<li>放置位置说明（placement specification）</li>
+<li>动作与朝向（action orientation）</li>
+<li>与其他物体的交互（interaction with other objects）</li>
+<li>成功/失败语义（success/failure semantics）</li>
+<li>夹爪状态（gripper state）</li>
+</ol>
+<p>下面的章节为每个维度给出代表性示例。</p>
+
+<h3 id="contact-region">1. 接触区域(Contact Region)<a class="headerlink" href="#contact-region" title="固定链接">&para;</a></h3>
+<p>清楚说明夹爪与物体接触的具体部位。</p>
+<figure>
+  <video src="./videos/uiuc_d3field_Dummy_instruction_ep7.mp4" controls preload="metadata"  aria-label="抓取把手"></video>
+  <figcaption>pick up <strong>the handle of</strong> the cup from the top<br>从上方抓起杯子的<strong>把手</strong>。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/Dummy_instruction_ep18.mp4" controls preload="metadata"  aria-label="抓取杯沿"></video>
+  <figcaption>pick up <strong>the rim</strong> of the cup.<br>抓起杯子的<strong>杯沿</strong>。</figcaption>
+</figure>
+
+<h3 id="object-disambiguation">2. 目标消歧(Object Disambiguation)<a class="headerlink" href="#object-disambiguation" title="固定链接">&para;</a></h3>
+<p>当出现相似物体时，描述必须唯一指向目标。常见策略包括：</p>
+<h4 id="relative-position">(1) 相对位置<a class="headerlink" href="#relative-position" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/bridge_put_knife_in_pot_cardboard_fen_ep24293.mp4" controls preload="metadata"  aria-label="刀"></video>
+  <figcaption>Grasp the yellow handle of the knife and put it into the orange pot <strong>on the left</strong>, with the yellow handle touching the bottom.<br>抓住刀子的黄色把手，将其放入<strong>左侧</strong>的橙色锅中，让黄色把手接触锅底。</figcaption>
+</figure>
+<h4 id="color-appearance">(2) 颜色或外观<a class="headerlink" href="#color-appearance" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/berkeley_rpt_converted_externally_to_rlds_pick_an_object_from_the_bin_ep30.mp4" controls preload="metadata"  aria-label="红色立方体"></video>
+  <figcaption>pick up the <strong>red cube</strong> from the bin<br>从箱子里拿起<strong>红色立方体</strong>。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/stack_cups_on_top_of_each_othe_ep872.mp4" controls preload="metadata"  aria-label="叠杯子"></video>
+  <figcaption>Stack the <strong>blue cup</strong> on top of the <strong>white cup</strong>, then stack the <strong>iron cup</strong> on top of the <strong>stacked cups</strong> on the <strong>left side</strong> of the table.<br>将蓝色杯子<strong>叠放在</strong>白色杯子顶部，然后<strong>将铁杯叠放在</strong>叠好的杯子上。</figcaption>
+</figure>
+<h4 id="layer-container">(3) 层级或容器位置<a class="headerlink" href="#layer-container" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/utaustin_mutex_With_caution,_bring_your_gripp_ep28.mp4" controls preload="metadata"  aria-label="抽屉"></video>
+  <figcaption>Pull to open the <strong>top level</strong> drawer<br>拉开<strong>最上层</strong>抽屉。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/Please_adjust_your_gripper_to__ep150.mp4" controls preload="metadata"  aria-label="抽屉"></video>
+  <figcaption>Pull to open the <strong>second level</strong> drawer<br>拉开<strong>第二层</strong>抽屉。</figcaption>
+</figure>
+
+<h3 id="placement-specification">3. 放置位置说明(Placement Specification)<a class="headerlink" href="#placement-specification" title="固定链接">&para;</a></h3>
+<p>说明物体最终位置、参照物，以及必要时的最终姿态。</p>
+<h4 id="relative-placement">(1) 相对其他物体<a class="headerlink" href="#relative-placement" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/utaustin_mutex_Kindly_employ_your_clamp_to_so_ep64.mp4" controls preload="metadata"  aria-label="蓝色面包"></video>
+  <figcaption>Pick up the blue bread and <strong>place it in the middle of</strong> the oven pan, then push the oven pan closed.<br>拿起蓝色面包并将其<strong>放在</strong>烤盘<strong>中间</strong>，然后把烤盘推合。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/berkeley_fanuc_manipulation_Pick_up_the_object_under_the_t_ep388.mp4" controls preload="metadata"  aria-label="桌下物体"></video>
+  <figcaption>Pick up the object under the table from <strong>left</strong> and <strong>put it on top of</strong> the table.<br>从左侧拿起桌子下面的物体，并<strong>放到</strong>桌面上。</figcaption>
+</figure>
+<h4 id="absolute-placement">(2) 相对机器人绝对位置<a class="headerlink" href="#absolute-placement" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/bridge_Place_the_fork_between_the_pot_ep4585.mp4" controls preload="metadata"  aria-label="叉子"></video>
+  <figcaption>Grasp the red handle of the fork, lift it up, <strong>place it on closer side</strong> of you <br>抓住叉子的红色把手，将其抬起，<strong>放到你更近的一侧</strong>。</figcaption>
+</figure>
+<h4 id="final-pose">(3) 最终姿态或状态<a class="headerlink" href="#final-pose" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/fractal20220817_data_pick_blue_plastic_bottle_from__ep41798.mp4" controls preload="metadata"  aria-label="瓶子"></video>
+  <figcaption>Grasp the middle part of the plastic bottle that is standing upright in the white bowl, then <strong>place it upright</strong> on the table to the right of the bowl.<br>抓住白色碗中直立塑料瓶的中部，然后将其<strong>直立放置</strong>在碗右侧的桌面上。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/knock_water_bottle_over_ep347.mp4" controls preload="metadata"  aria-label="瓶子"></video>
+  <figcaption>Grasp the middle part of the upright plastic bottle, rotate it 90 degrees counterclockwise, and <strong>place it flat</strong> on the table <strong>with its cap pointing to the left</strong>.<br>抓住直立塑料瓶的中部，逆时针旋转 90 度，并将其<strong>平放</strong>在桌面上，<strong>瓶盖朝左</strong>。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/bridge_upright_metal_pot_cardboard_fe_ep20542.mp4" controls preload="metadata"  aria-label="金属锅"></video>
+  <figcaption>Grasp one handle of the <strong>flipped</strong> pot and rotate 90 degrees clockwise to make it <strong>upright</strong> on the left side of board.<br>抓住<strong>倒扣</strong>锅的一侧把手，顺时针旋转 90 度，使其在板子左侧<strong>立正</strong>。</figcaption>
+</figure>
+
+<h3 id="action-orientation">4. 动作与朝向(Action Orientation)<a class="headerlink" href="#action-orientation" title="固定链接">&para;</a></h3>
+<p>当方向或朝向重要时，需要说明方向、次数与整体运动。</p>
+<figure>
+  <video src="./videos/bc_z_drag_the_ceramic_bowl_in_a_cir_ep52.mp4" controls preload="metadata"  aria-label="旋转手臂"></video>
+  <figcaption>Drag the bowl <strong>clock-wise</strong> for around <strong>3 circle</strong>.<br>将碗<strong>顺时针</strong>拖动约<strong>3 圈</strong>。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/bc_z_drag_the_ceramic_bowl_in_a_cir_ep408.mp4" controls preload="metadata"  aria-label="旋转碗"></video>
+  <figcaption>Grasp the ceramic bowl by the left rim, then rotate it <strong>counterclockwise</strong> for <strong>5 times</strong>, sweeping away the grey sponge on the first rotation.<br>抓住陶瓷碗左侧边缘，<strong>逆时针</strong>旋转<strong>5 次</strong>，并在第一次旋转时扫开灰色海绵。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/bc_z_place_fork_in_plastic_cup_ep4099.mp4" controls preload="metadata"  aria-label="旋转碗"></video>
+  <figcaption>First, pick up the fork by its head. Next, move the fork to the left and  <strong>insert it vertically</strong> into the blue cup. Finally, release the fork inside the cup, leaving it upright.<br>首先抓住叉子头部，然后向左移动叉子并<strong>竖直插入</strong>蓝色杯子中，最后在杯内松开叉子，让其保持直立。</figcaption>
+</figure>
+
+<h3 id="interaction">5. 与其他物体的交互(Interaction with Other Objects)<a class="headerlink" href="#interaction" title="固定链接">&para;</a></h3>
+<p>记录被操纵物体与周边物体之间、或夹爪与邻近物体之间的次级接触。</p>
+<h4 id="object-object">(1) 物体-物体接触<a class="headerlink" href="#object-object" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/bridge_Place_the_blue_handled_utensil_ep7748.mp4" controls preload="metadata"  aria-label="餐具接触"></video>
+  <figcaption>Pick up the blue utensil at the middle blue handle part, and try to put it on the behind of the pot, <strong>while during the movement it hit the pot at the back rim and the pot oscillates a bit</strong>.<br>抓住蓝色餐具中部的蓝色手柄，尝试把它放在锅的后方，<strong>过程中碰到了锅的后侧边缘并导致锅轻微晃动</strong>。</figcaption>
+</figure>
+<h4 id="gripper-contacts">(2) 夹爪-物体接触<a class="headerlink" href="#gripper-contacts" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/robo_set_Drag_mug_right_to_left._ep216.mp4" controls preload="metadata"  aria-label="拖动杯子"></video>
+  <figcaption>Drag the green mug from right to left until the <strong>gripper touches the green strainer</strong>.<br>将绿色杯子从右向左拖动，直到<strong>夹爪触碰到绿色滤网</strong>。</figcaption>
+</figure>
+
+<h3 id="success-failure">6. 成功/失败语义(Success/Failure Semantics)<a class="headerlink" href="#success-failure" title="固定链接">&para;</a></h3>
+<p>在需要时记录重试与明确的成功或失败。</p>
+<h4 id="repeated-attempts">(1) 重复尝试<a class="headerlink" href="#repeated-attempts" title="固定链接">&para;</a></h4>
+<figure>
+  <video src="./videos/drag_the_pepper_across_the_tab_ep827.mp4" controls preload="metadata"  aria-label="对齐盖子"></video>
+  <figcaption><strong>Repeatedly</strong> strike the pepper with the left finger of the gripper <strong>until it is pushed off the table</strong>.<br>用夹爪左指<strong>反复</strong>敲击辣椒，<strong>直到它被推落桌面</strong>。</figcaption>
+</figure>
+
+<h3 id="gripper-state">7. 夹爪状态(Gripper State)<a class="headerlink" href="#gripper-state" title="固定链接">&para;</a></h3>
+<p>开合动作是轨迹的一部分，应明确标注。</p>
+<figure>
+  <video src="./videos/open_bottom_drawer_ep175.mp4" controls preload="metadata"  aria-label="夹爪"></video>
+  <figcaption><strong>Insert a claw into the gap</strong> at the top of the bottom drawer, pull it outward to open the bottom drawer.  <br>将<strong>夹爪插入</strong>底部抽屉上方的缝隙中，向外拉开底部抽屉。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/open_bottom_drawer_ep195.mp4" controls preload="metadata"  aria-label="夹爪"></video>
+  <figcaption><strong>Grasp</strong> the right side of the bottom drawer’s front surface and pull it outward to open the drawer.<br><strong>抓住</strong>底部抽屉正面右侧并向外拉开抽屉。</figcaption>
+</figure>
+<!-- 
+<h2 id="middle-instructions">中层/自然语言指令<a class="headerlink" href="#middle-instructions" title="固定链接">&para;</a></h2>
+<p>日常人机交互往往不会列出低层细节。为训练具备泛化能力的模型，我们也收集<strong>结果驱动</strong>的描述，强调期望的最终状态。</p>
+<h3 id="result-driven">结果驱动指令<a class="headerlink" href="#result-driven" title="固定链接">&para;</a></h3>
+<p>这些指令描述目标配置，而将运动规划留给模型自行推断。</p>
+<figure>
+  <video src="./videos/kaist_nonprehensile_converted_externally_to_rlds_Flip_a_ceramic_cup_180_degrees_ep59.mp4" controls preload="metadata"  aria-label="杯子"></video>
+  <figcaption>Make cup infront of you <strong>upside down</strong>.<br>让你面前的杯子<strong>倒扣</strong>。</figcaption>
+</figure>
+<figure>
+  <video src="./videos/knock_water_bottle_over_ep347.mp4" controls preload="metadata"  aria-label="杯子"></video>
+  <figcaption><strong>Stack</strong> blue cup into white cup.<br>将蓝色杯子<strong>套叠</strong>进白色杯子里。</figcaption>
+</figure>
+
+<figure>
+  <video src="./videos/bc_z_stack_cups_on_top_of_each_othe_ep455.mp4" controls preload="metadata"  aria-label="叠杯子"></video>
+  <figcaption><strong>Lay</strong> the plastic bottle down.<br>将塑料瓶<strong>放倒</strong>。</figcaption>
+</figure> -->
+<style id="instruction-media-styles">
+  .md-typeset figure {
+    margin: 1.75rem auto;
+  }
+
+  .md-typeset figure > video {
+    display: block;
+    width: min(300px, 100%);
+    height: auto;
+    border-radius: 12px;
+    background: #000;
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .md-typeset figure > video + figcaption {
+    text-align: center;
+    max-width: 360px;
+    font-size: inherit;
+    line-height: 1.45;
+    margin: 0.75rem auto 0;
+  }
+
+  @media (min-width: 960px) {
+    .md-typeset figure > video {
+      width: 300px;
+    }
+  }
+</style>
+
+</article>
+            </div>
+          
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var videos = document.querySelectorAll(".md-typeset figure > video");
+    videos.forEach(function (video) {
+      video.muted = true;
+      video.loop = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute("muted", "");
+      video.setAttribute("loop", "");
+      video.setAttribute("autoplay", "");
+      video.setAttribute("playsinline", "");
+      video.play().catch(function () {
+        /* Autoplay might still be blocked; leave controls active for manual playback. */
+      });
+    });
+  });
+</script>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  返回顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    内容撰写：<a href="https://ericsxt.github.io/" target="_blank" rel="noopener">XintongHu.Erics</a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": ".", "features": ["navigation.top", "navigation.expand"], "translations": {"clipboard.copied": "已复制到剪贴板", "clipboard.copy": "复制到剪贴板", "search.result.more.one": "本页还有 1 条结果", "search.result.more.other": "本页还有 # 条结果", "search.result.none": "没有匹配的文档", "search.result.one": "找到 1 条匹配结果", "search.result.other": "找到 # 条匹配结果", "search.result.placeholder": "输入内容以开始搜索", "search.result.term.missing": "缺失", "select.version": "选择版本"}}</script>
+    
+    
+      <script src="./assets/javascripts/bundle.56dfad97.min.js"></script>
+      
+    
+  </body>
+</html>

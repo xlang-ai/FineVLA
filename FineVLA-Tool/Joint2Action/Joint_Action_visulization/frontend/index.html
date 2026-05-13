@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeRobot v2.1 Visualizer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-card: #1a1d2e;
+  --bg-input: #252838;
+  --text-primary: #e4e6f0;
+  --text-secondary: #8b8fa3;
+  --accent: #6c63ff;
+  --accent-hover: #5a52e0;
+  --border: #2d3148;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 24px 0 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; }
+
+/* Input bar */
+.input-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.input-bar input {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-bar input:focus { border-color: var(--accent); }
+.input-bar input::placeholder { color: var(--text-secondary); }
+.btn {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Info bar */
+.info-bar {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+}
+.info-label { color: var(--text-secondary); }
+.info-value { color: var(--accent); font-weight: 600; }
+
+/* Sticky top panel */
+.sticky-panel {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-primary);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.sticky-panel.unpinned {
+  position: static;
+  border-bottom: 1px solid var(--border);
+}
+.pin-btn {
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  margin-left: auto;
+}
+.pin-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.pin-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Videos */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.video-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.video-card .video-title {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: rgba(108, 99, 255, 0.08);
+  border-bottom: 1px solid var(--border);
+}
+.video-card video {
+  width: 100%;
+  display: block;
+  background: #000;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+/* Playback controls */
+.playback-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.playback-controls .btn { padding: 6px 16px; font-size: 0.82rem; }
+.frame-display {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  min-width: 150px;
+}
+.frame-display span { color: var(--accent); font-weight: 600; }
+.slider-container { width: 100%; margin-bottom: 8px; }
+.slider-container input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-input);
+  border-radius: 3px;
+  outline: none;
+}
+.slider-container input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.task-display {
+  padding: 6px 12px;
+  background: rgba(108, 99, 255, 0.06);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+  font-size: 0.82rem;
+}
+.task-display .task-label { color: var(--text-secondary); font-size: 0.75rem; margin-bottom: 1px; }
+.task-display .task-text { color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Chart section */
+.chart-section {
+  margin-bottom: 20px;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  user-select: none;
+}
+.section-header h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.section-header .toggle { color: var(--text-secondary); font-size: 1.2rem; transition: transform 0.2s; }
+.section-header .toggle.collapsed { transform: rotate(-90deg); }
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.chart-card h3 {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.chart-card canvas { width: 100% !important; }
+
+/* Chart filter bar */
+.chart-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.chart-filter-bar::-webkit-scrollbar { height: 4px; }
+.chart-filter-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.filter-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-right: 4px;
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+}
+.filter-btn {
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.filter-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.filter-checks {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.filter-checks label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.filter-checks label.checked { color: var(--accent); font-weight: 500; }
+.filter-checks input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
+/* Loading */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 23, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.loading-overlay.hidden { display: none; }
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Quick selector */
+.quick-selector {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.quick-selector label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.quick-selector select {
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  min-width: 180px;
+  max-width: 400px;
+}
+.quick-selector select:focus { border-color: var(--accent); }
+.quick-selector input[type="number"] {
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  width: 90px;
+}
+.quick-selector input[type="number"]:focus { border-color: var(--accent); }
+.quick-selector .btn { padding: 6px 18px; font-size: 0.82rem; }
+.or-divider {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  padding: 0 4px;
+}
+
+/* Hidden */
+.hidden { display: none !important; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .video-grid { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>LeRobot v2.1 Dataset Visualizer</h1>
+    <p>Visualize robot episode data: multi-view video, task annotations, state & action curves</p>
+  </div>
+
+  <div class="quick-selector">
+    <label>Dataset:</label>
+    <select id="familySelect" onchange="onFamilyChange()"><option value="">-- select --</option></select>
+    <label>Sub:</label>
+    <select id="subSelect"><option value="">--</option></select>
+    <label>Episode:</label>
+    <input type="number" id="episodeInput" value="0" min="0">
+    <button class="btn" onclick="loadFromSelector()">Go</button>
+    <span class="or-divider">|</span>
+    <label>Or paste path:</label>
+  </div>
+  <div class="input-bar">
+    <input type="text" id="pathInput" placeholder="Paste parquet file path, e.g. /mnt/.../data/chunk-000/episode_000000.parquet">
+    <button class="btn" id="loadBtn" onclick="loadData()">Load</button>
+  </div>
+
+  <div id="stickyPanel" class="sticky-panel hidden">
+    <div id="infoBar" class="info-bar" style="margin-bottom:8px;"></div>
+    <div id="videoFilterBar" class="chart-filter-bar" style="margin-bottom:6px; border-radius:6px;"></div>
+    <div id="videoSection" class="video-grid"></div>
+
+    <div id="playbackSection" class="playback-section">
+      <div class="playback-controls">
+        <button class="btn" id="playPauseBtn" onclick="togglePlay()">Play</button>
+        <button class="btn" onclick="stepFrame(-1)" style="padding:8px 14px;">-1</button>
+        <button class="btn" onclick="stepFrame(1)" style="padding:8px 14px;">+1</button>
+        <div class="frame-display">
+          Frame: <span id="frameNum">0</span> / <span id="totalFrames">0</span>
+        </div>
+      </div>
+      <div class="slider-container">
+        <input type="range" id="frameSlider" min="0" max="0" value="0" oninput="onSliderChange(this.value)">
+      </div>
+      <div class="task-display">
+        <div class="task-label">Current Task</div>
+        <div class="task-text" id="taskText">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stateSection" class="chart-section hidden">
+    <div class="section-header" onclick="toggleSection('stateBody', this)">
+      <h2>State Curves</h2>
+      <span class="toggle">&#9660;</span>
+    </div>
+    <div id="stateBody">
+      <div id="stateFilterBar" class="chart-filter-bar"></div>
+      <div id="stateCharts" class="chart-grid"></div>
+    </div>
+  </div>
+
+  <div id="actionSection" class="chart-section hidden">
+    <div class="section-header" onclick="toggleSection('actionBody', this)">
+      <h2>Action Curves</h2>
+      <span class="toggle">&#9660;</span>
+    </div>
+    <div id="actionBody">
+      <div id="actionFilterBar" class="chart-filter-bar"></div>
+      <div id="actionCharts" class="chart-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<script>
+const DATA_ROOT = '/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21';
+const CHUNKS_SIZE = 1000;
+const DATASET_FAMILIES = [
+  "BC_Z","Bridge","Galaxea-Open-World-Dataset","RDT-yhq","RH20T-fjy","RT-1",
+  "RoboCOIN","RoboCOIN_add0130","RoboCOIN_add1201","RoboMindV1.0","RoboMindV2.0",
+  "agibotworld_hyy","droid_1.0.1","egodex_train_robot_yhq","xvla-soft-fold_franka_v3_franka"
+];
+
+function initSelector() {
+  const sel = document.getElementById('familySelect');
+  DATASET_FAMILIES.forEach(fam => {
+    const opt = document.createElement('option');
+    opt.value = fam;
+    opt.textContent = fam;
+    sel.appendChild(opt);
+  });
+}
+
+async function onFamilyChange() {
+  const family = document.getElementById('familySelect').value;
+  const subSel = document.getElementById('subSelect');
+  subSel.innerHTML = '<option value="">Loading...</option>';
+  if (!family) { subSel.innerHTML = '<option value="">--</option>'; return; }
+  try {
+    const res = await fetch(`${window.location.origin}/api/list_subs?family=${encodeURIComponent(family)}`);
+    const data = await res.json();
+    subSel.innerHTML = '';
+    const subs = data.subs || [];
+    if (subs.length === 1 && subs[0] === '') {
+      subSel.innerHTML = '<option value="">(root-level)</option>';
+    } else {
+      subs.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        subSel.appendChild(opt);
+      });
+    }
+  } catch(e) {
+    subSel.innerHTML = '<option value="">Error loading</option>';
+  }
+}
+
+function loadFromSelector() {
+  const family = document.getElementById('familySelect').value;
+  const sub = document.getElementById('subSelect').value;
+  const epIdx = parseInt(document.getElementById('episodeInput').value) || 0;
+  if (!family) { alert('Please select a dataset'); return; }
+
+  const chunkNum = Math.floor(epIdx / CHUNKS_SIZE);
+  const chunkStr = String(chunkNum).padStart(3, '0');
+  const epStr = String(epIdx).padStart(6, '0');
+
+  let datasetPath = `${DATA_ROOT}/${family}`;
+  if (sub) datasetPath += `/${sub}`;
+  const parquetPath = `${datasetPath}/data/chunk-${chunkStr}/episode_${epStr}.parquet`;
+
+  document.getElementById('pathInput').value = parquetPath;
+  loadData();
+}
+
+document.addEventListener('DOMContentLoaded', initSelector);
+
+const API_BASE = window.location.origin;
+
+let appState = {
+  datasetRoot: '',
+  chunk: 0,
+  episode: 0,
+  fps: 15,
+  totalFrames: 0,
+  currentFrame: 0,
+  playing: false,
+  tasksMap: {},
+  frameTasks: [],
+  charts: [],
+  videos: [],
+  animId: null,
+};
+
+const CHART_COLORS = [
+  '#6c63ff', '#f87171', '#4ade80', '#fbbf24', '#38bdf8',
+  '#e879f9', '#fb923c', '#2dd4bf', '#a78bfa', '#f472b6',
+];
+
+function showLoading() { document.getElementById('loadingOverlay').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+
+async function loadData() {
+  const path = document.getElementById('pathInput').value.trim();
+  if (!path) return;
+
+  showLoading();
+  document.getElementById('loadBtn').disabled = true;
+
+  try {
+    // Step 1: Parse path
+    const parseRes = await fetch(`${API_BASE}/api/parse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parquet_path: path }),
+    });
+    if (!parseRes.ok) {
+      const err = await parseRes.json();
+      throw new Error(err.detail || 'Parse failed');
+    }
+    const meta = await parseRes.json();
+
+    appState.datasetRoot = meta.dataset_root;
+    appState.chunk = meta.chunk_number;
+    appState.episode = meta.episode_number;
+    appState.fps = meta.fps;
+
+    showInfoBar(meta);
+    setupVideos(meta);
+
+    // Step 2: Load chart data
+    const dataRes = await fetch(
+      `${API_BASE}/api/data?dataset_root=${encodeURIComponent(meta.dataset_root)}&chunk=${meta.chunk_number}&episode=${meta.episode_number}`
+    );
+    if (!dataRes.ok) {
+      const err = await dataRes.json();
+      throw new Error(err.detail || 'Data load failed');
+    }
+    const data = await dataRes.json();
+
+    appState.totalFrames = data.total_frames;
+    appState.tasksMap = data.tasks_map;
+    appState.frameTasks = data.frame_tasks;
+    appState.fps = data.fps;
+
+    setupPlayback(data.total_frames);
+    renderCharts('stateCharts', 'stateSection', data.state_data, 'stateFilterBar');
+    renderCharts('actionCharts', 'actionSection', data.action_data, 'actionFilterBar');
+    updateFrameDisplay(0);
+
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    hideLoading();
+    document.getElementById('loadBtn').disabled = false;
+  }
+}
+
+function showInfoBar(meta) {
+  const panel = document.getElementById('stickyPanel');
+  panel.classList.remove('hidden');
+  panel.classList.remove('unpinned');
+  const bar = document.getElementById('infoBar');
+  bar.innerHTML = `
+    <div class="info-item"><span class="info-label">Dataset:</span><span class="info-value">${meta.dataset_family}</span></div>
+    <div class="info-item"><span class="info-label">Episode:</span><span class="info-value">${meta.episode_number}</span></div>
+    <div class="info-item"><span class="info-label">FPS:</span><span class="info-value">${meta.fps}</span></div>
+    <div class="info-item"><span class="info-label">Videos:</span><span class="info-value">${meta.video_keys.length} views</span></div>
+    <div class="info-item"><span class="info-label">Total Episodes:</span><span class="info-value">${meta.total_episodes}</span></div>
+    <button class="pin-btn active" id="pinBtn" onclick="togglePin()">&#128204; Pinned</button>
+  `;
+}
+
+function togglePin() {
+  const panel = document.getElementById('stickyPanel');
+  const btn = document.getElementById('pinBtn');
+  const isPinned = !panel.classList.contains('unpinned');
+  if (isPinned) {
+    panel.classList.add('unpinned');
+    btn.classList.remove('active');
+    btn.innerHTML = '&#128204; Unpinned';
+  } else {
+    panel.classList.remove('unpinned');
+    btn.classList.add('active');
+    btn.innerHTML = '&#128204; Pinned';
+  }
+}
+
+function setupVideos(meta) {
+  const section = document.getElementById('videoSection');
+  section.innerHTML = '';
+  appState.videos = [];
+  appState.videoCards = [];
+
+  meta.video_keys.forEach(vk => {
+    const card = document.createElement('div');
+    card.className = 'video-card';
+    card.setAttribute('data-video-key', vk);
+    const shortName = vk.replace('observation.images.', '');
+    const videoUrl = `${API_BASE}/api/video?dataset_root=${encodeURIComponent(meta.dataset_root)}&chunk=${meta.chunk_number}&episode=${meta.episode_number}&video_key=${encodeURIComponent(vk)}`;
+    card.innerHTML = `
+      <div class="video-title">${shortName}</div>
+      <video preload="auto" muted>
+        <source src="${videoUrl}" type="video/mp4">
+        Your browser may not support AV1 codec.
+      </video>
+    `;
+    section.appendChild(card);
+    const videoEl = card.querySelector('video');
+    appState.videos.push(videoEl);
+    appState.videoCards.push({ key: vk, card, video: videoEl });
+  });
+
+  buildVideoFilterBar(meta.video_keys);
+}
+
+function buildVideoFilterBar(videoKeys) {
+  const bar = document.getElementById('videoFilterBar');
+  bar.innerHTML = '';
+
+  const actions = document.createElement('div');
+  actions.className = 'filter-actions';
+  const btnAll = document.createElement('button');
+  btnAll.className = 'filter-btn';
+  btnAll.textContent = 'All';
+  btnAll.onclick = () => setAllVideoFilters(true);
+  const btnNone = document.createElement('button');
+  btnNone.className = 'filter-btn';
+  btnNone.textContent = 'None';
+  btnNone.onclick = () => setAllVideoFilters(false);
+  actions.appendChild(btnAll);
+  actions.appendChild(btnNone);
+  bar.appendChild(actions);
+
+  const checks = document.createElement('div');
+  checks.className = 'filter-checks';
+  videoKeys.forEach(vk => {
+    const label = document.createElement('label');
+    label.className = 'checked';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.setAttribute('data-video-key', vk);
+    cb.onchange = () => applyVideoFilter();
+    const shortName = vk.replace('observation.images.', '');
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(shortName));
+    checks.appendChild(label);
+  });
+  bar.appendChild(checks);
+}
+
+function applyVideoFilter() {
+  const bar = document.getElementById('videoFilterBar');
+  const section = document.getElementById('videoSection');
+  bar.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    const vk = cb.getAttribute('data-video-key');
+    const card = section.querySelector(`.video-card[data-video-key="${vk}"]`);
+    const label = cb.parentElement;
+    if (cb.checked) {
+      if (card) card.classList.remove('hidden');
+      label.classList.add('checked');
+    } else {
+      if (card) card.classList.add('hidden');
+      label.classList.remove('checked');
+    }
+  });
+}
+
+function setAllVideoFilters(checked) {
+  const bar = document.getElementById('videoFilterBar');
+  bar.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = checked; });
+  applyVideoFilter();
+}
+
+function setupPlayback(totalFrames) {
+  const slider = document.getElementById('frameSlider');
+  slider.max = totalFrames - 1;
+  slider.value = 0;
+  document.getElementById('totalFrames').textContent = totalFrames - 1;
+  appState.currentFrame = 0;
+  appState.playing = false;
+  document.getElementById('playPauseBtn').textContent = 'Play';
+}
+
+function updateFrameDisplay(frame) {
+  frame = Math.max(0, Math.min(frame, appState.totalFrames - 1));
+  appState.currentFrame = frame;
+  document.getElementById('frameNum').textContent = frame;
+  document.getElementById('frameSlider').value = frame;
+
+  // Update task display
+  if (appState.frameTasks.length > frame) {
+    const taskIdx = appState.frameTasks[frame];
+    const taskText = appState.tasksMap[String(taskIdx)] || `task_index: ${taskIdx}`;
+    document.getElementById('taskText').textContent = taskText;
+  }
+
+  // Update chart vertical lines
+  appState.charts.forEach(chart => {
+    if (chart.options.plugins.annotation) {
+      chart.options.plugins.annotation.annotations.frameLine.xMin = frame;
+      chart.options.plugins.annotation.annotations.frameLine.xMax = frame;
+      chart.update('none');
+    }
+  });
+}
+
+function onSliderChange(val) {
+  const frame = parseInt(val);
+  updateFrameDisplay(frame);
+  seekVideos(frame);
+}
+
+function seekVideos(frame) {
+  const time = frame / appState.fps;
+  appState.videos.forEach(v => {
+    if (v.readyState >= 1) {
+      v.currentTime = time;
+    }
+  });
+}
+
+function togglePlay() {
+  if (appState.playing) {
+    pauseAll();
+  } else {
+    playAll();
+  }
+}
+
+function playAll() {
+  appState.playing = true;
+  document.getElementById('playPauseBtn').textContent = 'Pause';
+  appState.videos.forEach(v => v.play());
+
+  function syncLoop() {
+    if (!appState.playing) return;
+    const mainVideo = appState.videos[0];
+    if (mainVideo && mainVideo.readyState >= 1) {
+      const frame = Math.round(mainVideo.currentTime * appState.fps);
+      if (frame !== appState.currentFrame) {
+        updateFrameDisplay(frame);
+      }
+      if (mainVideo.ended) {
+        pauseAll();
+        return;
+      }
+    }
+    appState.animId = requestAnimationFrame(syncLoop);
+  }
+  syncLoop();
+}
+
+function pauseAll() {
+  appState.playing = false;
+  document.getElementById('playPauseBtn').textContent = 'Play';
+  appState.videos.forEach(v => v.pause());
+  if (appState.animId) {
+    cancelAnimationFrame(appState.animId);
+    appState.animId = null;
+  }
+}
+
+function stepFrame(delta) {
+  pauseAll();
+  const newFrame = appState.currentFrame + delta;
+  updateFrameDisplay(newFrame);
+  seekVideos(newFrame);
+}
+
+function toggleSection(bodyId, headerEl) {
+  const body = document.getElementById(bodyId);
+  const toggle = headerEl.querySelector('.toggle');
+  body.classList.toggle('hidden');
+  toggle.classList.toggle('collapsed');
+}
+
+function renderCharts(containerId, sectionId, data, filterBarId) {
+  const container = document.getElementById(containerId);
+  const section = document.getElementById(sectionId);
+  container.innerHTML = '';
+
+  appState.charts = appState.charts.filter(c => {
+    if (c.canvas && c.canvas.closest('#' + containerId)) {
+      c.destroy();
+      return false;
+    }
+    return true;
+  });
+
+  const fields = Object.keys(data);
+  if (fields.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  fields.forEach(field => {
+    const fieldData = data[field];
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.setAttribute('data-field', field);
+
+    const shortField = field.replace('observation.state.', 'state.').replace('action.', 'act.');
+    card.innerHTML = `<h3>${shortField}</h3><canvas></canvas>`;
+    container.appendChild(card);
+
+    const canvas = card.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const values = fieldData.values;
+    const dimNames = fieldData.dim_names;
+    const totalFrames = values.length;
+    const numDims = values[0] ? values[0].length : 0;
+
+    const labels = Array.from({ length: totalFrames }, (_, i) => i);
+
+    const datasets = [];
+    for (let d = 0; d < numDims; d++) {
+      const lineData = values.map(row => row[d]);
+      datasets.push({
+        label: dimNames[d] || `dim_${d}`,
+        data: lineData,
+        borderColor: CHART_COLORS[d % CHART_COLORS.length],
+        backgroundColor: 'transparent',
+        borderWidth: 1.2,
+        pointRadius: 0,
+        tension: 0.1,
+      });
+    }
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2.5,
+        animation: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'frame', color: '#8b8fa3', font: { size: 11 } },
+            ticks: { color: '#8b8fa3', font: { size: 10 }, maxTicksLimit: 10 },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+          },
+          y: {
+            min: fieldData.y_min,
+            max: fieldData.y_max,
+            title: { display: true, text: 'value', color: '#8b8fa3', font: { size: 11 } },
+            ticks: { color: '#8b8fa3', font: { size: 10 }, maxTicksLimit: 6 },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+          },
+        },
+        plugins: {
+          legend: {
+            display: numDims > 1,
+            labels: { color: '#8b8fa3', font: { size: 10 }, boxWidth: 12 },
+          },
+          tooltip: {
+            backgroundColor: '#1a1d2e',
+            borderColor: '#6c63ff',
+            borderWidth: 1,
+            titleColor: '#e4e6f0',
+            bodyColor: '#e4e6f0',
+            bodyFont: { size: 11 },
+          },
+          annotation: {
+            annotations: {
+              frameLine: {
+                type: 'line',
+                xMin: 0,
+                xMax: 0,
+                borderColor: 'rgba(255, 255, 255, 0.6)',
+                borderWidth: 1.5,
+                borderDash: [4, 3],
+              },
+            },
+          },
+        },
+      },
+    });
+
+    appState.charts.push(chart);
+  });
+
+  if (filterBarId) {
+    buildFilterBar(filterBarId, containerId, fields);
+  }
+}
+
+function buildFilterBar(filterBarId, chartGridId, fields) {
+  const bar = document.getElementById(filterBarId);
+  bar.innerHTML = '';
+
+  const actions = document.createElement('div');
+  actions.className = 'filter-actions';
+
+  const btnAll = document.createElement('button');
+  btnAll.className = 'filter-btn';
+  btnAll.textContent = 'All';
+  btnAll.onclick = () => setAllFilters(filterBarId, chartGridId, true);
+
+  const btnNone = document.createElement('button');
+  btnNone.className = 'filter-btn';
+  btnNone.textContent = 'None';
+  btnNone.onclick = () => setAllFilters(filterBarId, chartGridId, false);
+
+  actions.appendChild(btnAll);
+  actions.appendChild(btnNone);
+  bar.appendChild(actions);
+
+  const checks = document.createElement('div');
+  checks.className = 'filter-checks';
+
+  fields.forEach(field => {
+    const label = document.createElement('label');
+    label.className = 'checked';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.setAttribute('data-field', field);
+    cb.onchange = () => {
+      applyFilter(chartGridId, filterBarId);
+    };
+    const shortName = field.replace('observation.state.', 's.').replace('action.', 'a.');
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(shortName));
+    checks.appendChild(label);
+  });
+
+  bar.appendChild(checks);
+}
+
+function applyFilter(chartGridId, filterBarId) {
+  const bar = document.getElementById(filterBarId);
+  const grid = document.getElementById(chartGridId);
+  const checkboxes = bar.querySelectorAll('input[type="checkbox"]');
+
+  checkboxes.forEach(cb => {
+    const field = cb.getAttribute('data-field');
+    const card = grid.querySelector(`.chart-card[data-field="${field}"]`);
+    const label = cb.parentElement;
+    if (cb.checked) {
+      if (card) card.classList.remove('hidden');
+      label.classList.add('checked');
+    } else {
+      if (card) card.classList.add('hidden');
+      label.classList.remove('checked');
+    }
+  });
+}
+
+function setAllFilters(filterBarId, chartGridId, checked) {
+  const bar = document.getElementById(filterBarId);
+  bar.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = checked; });
+  applyFilter(chartGridId, filterBarId);
+}
+
+// ========== DTW Modal ==========
+let dtwCharts = [];
+
+async function calDTW() {
+  if (!appState.datasetRoot) {
+    alert('Please load an episode first.');
+    return;
+  }
+
+  const btn = document.getElementById('dtwBtn');
+  btn.disabled = true;
+  btn.textContent = 'Computing...';
+  showLoading();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/cal_dtw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataset_root: appState.datasetRoot,
+        chunk: appState.chunk,
+        episode: appState.episode,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'DTW computation failed');
+    }
+
+    const data = await res.json();
+    showDtwModal(data);
+
+  } catch (e) {
+    alert('DTW Error: ' + e.message);
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+    btn.textContent = 'Cal_DTW';
+  }
+}
+
+function showDtwModal(data) {
+  const modal = document.getElementById('dtwModal');
+  modal.classList.remove('hidden');
+
+  document.getElementById('dtwModalTitle').textContent =
+    `State vs Action DTW  —  state.${data.state_slot} vs action.${data.action_slot}`;
+
+  const scoreStr = (data.dtw_score !== null && !isNaN(data.dtw_score))
+    ? data.dtw_score.toFixed(4) : 'N/A';
+  document.getElementById('dtwScoreValue').textContent = scoreStr;
+  document.getElementById('dtwMetaInfo').textContent =
+    `Frames: ${data.total_frames}  |  Valid dims: ${data.valid_dims}  |  Normalized (z-score)`;
+
+  renderDtwCharts(data);
+}
+
+function closeDtwModal() {
+  document.getElementById('dtwModal').classList.add('hidden');
+  dtwCharts.forEach(c => c.destroy());
+  dtwCharts = [];
+  document.getElementById('dtwChartGrid').innerHTML = '';
+}
+
+const DTW_STATE_COLOR = '#4a90d9';
+const DTW_ACTION_COLOR = '#e67e22';
+
+function renderDtwCharts(data) {
+  const grid = document.getElementById('dtwChartGrid');
+  grid.innerHTML = '';
+  dtwCharts.forEach(c => c.destroy());
+  dtwCharts = [];
+
+  const stateNorm = data.state_norm;
+  const actionNorm = data.action_norm;
+  const T = stateNorm.length;
+  const D = stateNorm[0] ? stateNorm[0].length : 0;
+  const labels = Array.from({ length: T }, (_, i) => i);
+
+  for (let d = 0; d < D; d++) {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    const dimLabel = data.dim_names[d] || `dim_${d}`;
+    card.innerHTML = `<h3>${dimLabel}  (state: blue, action: orange)</h3><canvas></canvas>`;
+    grid.appendChild(card);
+
+    const canvas = card.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const stateData = stateNorm.map(row => row[d]);
+    const actionData = actionNorm.map(row => row[d]);
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: `state.${data.state_slot} dim${d}`,
+            data: stateData,
+            borderColor: DTW_STATE_COLOR,
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.1,
+          },
+          {
+            label: `action.${data.action_slot} dim${d}`,
+            data: actionData,
+            borderColor: DTW_ACTION_COLOR,
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [5, 3],
+            pointRadius: 0,
+            tension: 0.1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2.5,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: {
+            title: { display: true, text: 'frame', color: '#8b8fa3', font: { size: 11 } },
+            ticks: { color: '#8b8fa3', font: { size: 10 }, maxTicksLimit: 10 },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+          },
+          y: {
+            title: { display: true, text: 'normalized value', color: '#8b8fa3', font: { size: 11 } },
+            ticks: { color: '#8b8fa3', font: { size: 10 }, maxTicksLimit: 6 },
+            grid: { color: 'rgba(45,49,72,0.5)' },
+          },
+        },
+        plugins: {
+          legend: {
+            display: true,
+            labels: { color: '#8b8fa3', font: { size: 10 }, boxWidth: 12 },
+          },
+          tooltip: {
+            backgroundColor: '#1a1d2e',
+            borderColor: '#6c63ff',
+            borderWidth: 1,
+            titleColor: '#e4e6f0',
+            bodyColor: '#e4e6f0',
+            bodyFont: { size: 11 },
+          },
+        },
+      },
+    });
+
+    dtwCharts.push(chart);
+  }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('dtwModal');
+    if (!modal.classList.contains('hidden')) closeDtwModal();
+  }
+});
+
+// Close modal on overlay click
+document.getElementById('dtwModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeDtwModal();
+});
+
+// Allow pressing Enter to load
+document.getElementById('pathInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadData();
+});
+</script>
+</body>
+</html>

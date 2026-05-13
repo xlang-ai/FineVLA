@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pyarrow
+pandas
+numpy
+tslearn
+scipy

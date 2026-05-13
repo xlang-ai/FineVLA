@@ -1,0 +1,75 @@
+{
+    "_comment": "内容参考 https://github.com/StanfordVL/BEHAVIOR-1K/blob/9a7a806999eeb564d0aa132ba7d332baeefd97b9/OmniGibson/omnigibson/learning/utils/eval_utils.py#L86",
+    "state": {
+        "base_qvel": {
+            "start": 253,
+            "end": 256
+        },
+        "joint_qpos_sin": {
+            "start": 34,
+            "end": 56
+        },
+        "joint_qpos_cos": {
+            "start": 62,
+            "end": 84
+        }
+    },
+    "action": {
+        "base": {
+            "start": 0,
+            "end": 3
+        },
+        "torso": {
+            "start": 3,
+            "end": 7
+        },
+        "left_arm": {
+            "start": 7,
+            "end": 14
+        },
+        "left_gripper": {
+            "start": 14,
+            "end": 15
+        },
+        "right_arm": {
+            "start": 15,
+            "end": 22
+        },
+        "right_gripper": {
+            "start": 22,
+            "end": 23
+        }
+    },
+    "video": {
+        "left_wrist_rgb": {
+            "original_key": "observation.images.rgb.left_wrist"
+        },
+        "right_wrist_rgb": {
+            "original_key": "observation.images.rgb.right_wrist"
+        },
+        "head_rgb": {
+            "original_key": "observation.images.rgb.head"
+        },
+        "left_wrist_depth": {
+            "original_key": "observation.images.depth.left_wrist"
+        },
+        "right_wrist_depth": {
+            "original_key": "observation.images.depth.right_wrist"
+        },
+        "head_depth": {
+            "original_key": "observation.images.depth.head"
+        },
+        "left_wrist_seg_instance_id": {
+            "original_key": "observation.images.seg_instance_id.left_wrist"
+        },
+        "right_wrist_seg_instance_id": {
+            "original_key": "observation.images.seg_instance_id.right_wrist"
+        },
+        "head_seg_instance_id": {
+            "original_key": "observation.images.seg_instance_id.head"
+        }
+    },
+    "annotation": {
+        "human.action.task_description": {"original_key": "episode_index:episode_index"}
+    }
+}

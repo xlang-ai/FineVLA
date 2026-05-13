@@ -1,0 +1,67 @@
+{
+    "state": {
+        "shoulder_pan.pos": {
+            "start": 0,
+            "end": 1
+        },
+        "shoulder_lift.pos": {
+            "start": 1,
+            "end": 2
+        },
+        "elbow_flex.pos": {
+            "start": 2,
+            "end": 3
+        },
+        "wrist_flex.pos": {
+            "start": 3,
+            "end": 4
+        },
+        "wrist_roll.pos": {
+            "start": 4,
+            "end": 5
+        },
+        "gripper.pos": {
+            "start": 5,
+            "end": 6
+        }
+    },
+    "action": {
+        "shoulder_pan.pos": {
+            "start": 0,
+            "end": 1
+        },
+        "shoulder_lift.pos": {
+            "start": 1,
+            "end": 2
+        },
+        "elbow_flex.pos": {
+            "start": 2,
+            "end": 3
+        },
+        "wrist_flex.pos": {
+            "start": 3,
+            "end": 4
+        },
+        "wrist_roll.pos": {
+            "start": 4,
+            "end": 5
+        },
+        "gripper.pos": {
+            "start": 5,
+            "end": 6
+        }
+    },
+    "video": {
+        "primary_image": {
+            "original_key": "observation.images.side"
+        },
+        "wrist_image": {
+            "original_key": "observation.images.wrist"
+        }
+    },
+    "annotation": {
+        "human.action.task_description": {
+            "original_key": "task_index"
+        }
+    }
+}

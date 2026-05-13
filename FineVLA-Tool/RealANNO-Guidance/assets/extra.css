@@ -1,0 +1,66 @@
+.nav-button {
+    background-color: #1c1e26;  /* 背景颜色 */
+    color: #ffffff;  /* 文字颜色 */
+    padding: 10px 20px;
+    border-radius: 50px;  /* 圆角 */
+    text-decoration: none;
+    display: inline-block;
+    font-weight: bold;
+    border: 2px solid #ffffff;  /* 外框边框颜色 */
+    transition: background-color 0.3s ease;
+  }
+  
+  .nav-button:hover {
+    background-color: #333333;  /* 悬停时背景颜色 */
+  }
+  
+  .nav-container {
+    display: flex;
+    justify-content: space-between;  /* 左右对齐 */
+    margin-top: 40px;
+    padding: 20px;
+    border-radius: 25px;  /* 外框的圆角 */
+    border: 2px solid #ffffff;  /* 外框边框颜色 */
+    background-color: #1c1e26;  /* 外框背景颜色 */
+  }
+  
+  .nav-button .arrow {
+    font-size: 1.2em;
+    vertical-align: middle;
+  }
+  
+  /* 左箭头样式 */
+  .nav-button.left .arrow {
+    margin-right: 10px;
+  }
+  
+  /* 右箭头样式 */
+  .nav-button.right .arrow {
+    margin-left: 10px;
+  }
+
+  .image-container {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .step-image {
+    width: 300px;
+    height: 250px;
+  }
+  
+  .step-tag {
+    position: absolute;
+    top: 10px; 
+    left: 10px; 
+    width: 50px;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+    color: white;
+    padding: 5px;
+    text-align: center;
+    font-size: 12px;
+    border-radius: 5px; 
+  }
+
+  
+  
