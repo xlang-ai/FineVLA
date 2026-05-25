@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/FineVLA-logo.png" alt="FineVLA" height="120">
+</p>
+
 <h1 align="center">FineVLA: Fine-Grained Instruction Alignment<br>for Steerable Vision-Language-Action Policies</h1>
 
 <p align="center">
@@ -90,6 +94,8 @@ RoboFine-Bench evaluates whether VLMs capture execution-level manipulation detai
 - **Caption Track** — Step-level action description with Consistency, Coverage, and Anti-Hallucination metrics under Easy (with instruction) and Hard (vision-only) settings
 
 **500 held-out videos** from 10 datasets, **32 embodiments**, **10,816 atomic facts** — strictly disjoint from all training data.
+
+For detailed benchmark description, evaluation code, and results, see [RoboFine-Bench on HuggingFace](https://huggingface.co/datasets/FineVLA/RoboFine-Bench).
 
 ### 3. RoboFine-VLM
 
