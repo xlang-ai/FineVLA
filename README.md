@@ -26,7 +26,7 @@
 <p align="center">
   <img src="assets/main_figure.jpg" alt="FineVLA Overview" width="100%">
 </p>
-<p align="center"><b>Figure 1: Overview of FineVLA.</b> FineVLA builds a closed loop for action-instruction alignment, connecting fine-grained data construction, robotic video understanding, scalable annotation, and steerable VLA policy learning.</p>
+<p align="center"><b>Figure 1: Overview of FineVLA.</b> FineVLA builds a closed loop for action-instruction alignment, connecting fine-grained data construction, robotic video understanding, scalable annotation, and steerable VLA policy learning. <b>Left:</b> FineVLA-Tool unifies heterogeneous robot trajectories from 10 open-source datasets, removes redundant demonstrations through clustering and sampling, and annotates representative trajectories with action-aligned descriptions across ten fine-grained dimensions. The resulting FineVLA-Data supports both RoboFine-Bench, which evaluates fine-grained robotic video understanding through Grounding VQA, Reasoning VQA, and Caption Evaluation, and RoboFine-VLM, a robotics-specialized VLM trained as a scalable annotator for new trajectories. <b>Right:</b> FineVLA-Policy is trained with mixtures of raw goal-level instructions and fine-grained process-level instructions under two action-decoding architectures, and is evaluated in both RoboTwin simulation and real-world dual-arm manipulation. The steerable-control examples illustrate how fine-grained language specifies execution-sensitive factors such as contact region, target object, active actor, trajectory and orientation, and failure recovery.</p>
 
 ## Highlights
 
@@ -44,6 +44,45 @@
 | [**FineVLA-Policy**](FineVLA-Policy/) | VLA policy training with fine-grained instruction supervision (StarVLA-based) | Released |
 | **RoboFine-VLM** | Robotics-specialized VLM annotator (fine-tuned Qwen3.5-397B-A17B) | Coming Soon |
 | **Model Checkpoints** | Pretrained and fine-tuned policy checkpoints on HuggingFace | Coming Soon |
+
+## Getting Started
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/EricsXt/FineVLA.git
+cd FineVLA
+```
+
+### FineVLA-Tool
+
+See [FineVLA-Tool/README.md](FineVLA-Tool/README.md) for the data construction pipeline.
+
+### RoboFine-Bench
+
+Benchmark data is hosted on HuggingFace: [FineVLA/RoboFine-Bench](https://huggingface.co/datasets/FineVLA/RoboFine-Bench)
+
+See [RoboFine-Bench/README.md](RoboFine-Bench/README.md) for evaluation code and instructions.
+
+### FineVLA-Policy
+
+See [FineVLA-Policy/README.md](FineVLA-Policy/README.md) for training and evaluation. Quick start:
+
+```bash
+cd FineVLA-Policy
+
+# Install
+conda create -n finevla python=3.10 -y && conda activate finevla
+pip install -r requirements.txt
+pip install flash-attn --no-build-isolation
+pip install -e .
+
+# Smoke test
+python starVLA/model/framework/QwenGR00T.py
+
+# Train (example: ALOHA with FG:Raw=1:1)
+bash examples/Aloha/run_qwen35_GR00T_aloha_multi_FG1_1_dlc.sh
+```
 
 ## Framework Overview
 
@@ -124,45 +163,6 @@ FineVLA-Policy trains VLA policies under two architectures (StarVLA-OFT and Star
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Raw-only | 72 | 35 | 22 | 24 | 60 | 60 | 76 | 49.9 |
 | FG:Raw=1:1 | **84** | **40** | **40** | **47** | **64** | **78** | **86** | **62.7** |
-
-## Getting Started
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/EricsXt/FineVLA.git
-cd FineVLA
-```
-
-### FineVLA-Tool
-
-See [FineVLA-Tool/README.md](FineVLA-Tool/README.md) for the data construction pipeline.
-
-### RoboFine-Bench
-
-Benchmark data is hosted on HuggingFace: [FineVLA/RoboFine-Bench](https://huggingface.co/datasets/FineVLA/RoboFine-Bench)
-
-See [RoboFine-Bench/README.md](RoboFine-Bench/README.md) for evaluation code and instructions.
-
-### FineVLA-Policy
-
-See [FineVLA-Policy/README.md](FineVLA-Policy/README.md) for training and evaluation. Quick start:
-
-```bash
-cd FineVLA-Policy
-
-# Install
-conda create -n finevla python=3.10 -y && conda activate finevla
-pip install -r requirements.txt
-pip install flash-attn --no-build-isolation
-pip install -e .
-
-# Smoke test
-python starVLA/model/framework/QwenGR00T.py
-
-# Train (example: ALOHA with FG:Raw=1:1)
-bash examples/Aloha/run_qwen35_GR00T_aloha_multi_FG1_1_dlc.sh
-```
 
 ## Citation
 
