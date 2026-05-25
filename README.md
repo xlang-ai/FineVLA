@@ -20,7 +20,7 @@
 **FineVLA** is a unified, fully open-source framework for fine-grained instruction alignment in Vision-Language-Action (VLA) learning. We argue that to **steer** robot behavior, language must be aligned with the action choices that determine execution — not just *what* to do, but *how* to do it.
 
 <p align="center">
-  <img src="assets/main_figure.png" alt="FineVLA Overview" width="100%">
+  <img src="assets/main_figure.jpg" alt="FineVLA Overview" width="100%">
 </p>
 <p align="center"><b>Figure 1: Overview of FineVLA.</b> FineVLA builds a closed loop for action-instruction alignment, connecting fine-grained data construction, robotic video understanding, scalable annotation, and steerable VLA policy learning.</p>
 
