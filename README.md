@@ -5,7 +5,7 @@
 <h1 align="center">FineVLA: Fine-Grained Instruction Alignment<br>for Steerable Vision-Language-Action Policies</h1>
 
 <p align="center">
-  <b>Xintong Hu<sup>*x</sup> &nbsp; Xuhong Huang<sup>*x</sup> &nbsp; Jinyu Zhang<sup>x</sup> &nbsp; Yutong Yao<sup>x</sup> &nbsp; Yuchong Sun<sup>q</sup> &nbsp; Qiuyue Wang<sup>q</sup></b><br>
+  <b><a href="https://ericsxt.github.io/">Xintong Hu</a><sup>*x</sup> &nbsp; Xuhong Huang<sup>*x</sup> &nbsp; Jinyu Zhang<sup>x</sup> &nbsp; Yutong Yao<sup>x</sup> &nbsp; Yuchong Sun<sup>q</sup> &nbsp; Qiuyue Wang<sup>q</sup></b><br>
   <b>Mingsheng Li<sup>q</sup> &nbsp; Sicheng Xie<sup>q</sup> &nbsp; Yitao Liu<sup>x</sup> &nbsp; Junhao Chen<sup>x</sup> &nbsp; Yixuan Chen<sup>x</sup> &nbsp; Yingming Zheng<sup>x</sup> &nbsp; Shuai Bai<sup>q</sup> &nbsp; Tao Yu<sup>&dagger;x</sup></b><br><br>
   <sup>x</sup>XLANG Lab, The University of Hong Kong &nbsp;&nbsp;&nbsp;&nbsp;
   <sup>q</sup>Qwen Team, Alibaba Inc.<br>
