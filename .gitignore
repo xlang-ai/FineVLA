@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.eggs/
+dist/
+build/
+
+hf_*/
+
+*.log
+*.tmp
+*.bak
+
+.DS_Store
+.vscode/
+.idea/
