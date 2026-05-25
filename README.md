@@ -1,18 +1,30 @@
-# FineVLA: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies
+<p align="center">
+  <img src="assets/XLANG_logo.png" alt="XLANG Lab" height="40">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/qwen_logo.png" alt="Qwen" height="40">
+</p>
 
-[![Paper](https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge)](https://arxiv.org/abs/xxxx.xxxxx)
-[![Model & Data on Hugging Face](https://img.shields.io/badge/HuggingFace-Model%20%26%20Data-orange?style=for-the-badge&logo=huggingface)](https://huggingface.co/FineVLA)
-[![GitHub](https://img.shields.io/badge/GitHub-FineVLA-blue?style=for-the-badge&logo=github)](https://github.com/EricsXt/FineVLA)
+<h1 align="center">FineVLA: Fine-Grained Instruction Alignment<br>for Steerable Vision-Language-Action Policies</h1>
 
-> **Xintong Hu\*, Xuhong Huang\*, Jinyu Zhang, Yutong Yao, Yuchong Sun, Qiuyue Wang, Mingsheng Li, Sicheng Xie, Yitao Liu, Junhao Chen, Yixuan Chen, Yingming Zheng, Shuai Bai, Tao Yu**
->
-> XLANG Lab, The University of Hong Kong &nbsp; | &nbsp; Qwen Team, Alibaba Inc.
+<p align="center">
+  <b>Xintong Hu<sup>*x</sup> &nbsp; Xuhong Huang<sup>*x</sup> &nbsp; Jinyu Zhang<sup>x</sup> &nbsp; Yutong Yao<sup>x</sup> &nbsp; Yuchong Sun<sup>q</sup> &nbsp; Qiuyue Wang<sup>q</sup></b><br>
+  <b>Mingsheng Li<sup>q</sup> &nbsp; Sicheng Xie<sup>q</sup> &nbsp; Yitao Liu<sup>x</sup> &nbsp; Junhao Chen<sup>x</sup> &nbsp; Yixuan Chen<sup>x</sup> &nbsp; Yingming Zheng<sup>x</sup> &nbsp; Shuai Bai<sup>q</sup> &nbsp; Tao Yu<sup>&dagger;x</sup></b><br>
+  <sup>x</sup>XLANG Lab, The University of Hong Kong &nbsp;&nbsp; <sup>q</sup>Qwen Team, Alibaba Inc.<br>
+  <sup>*</sup>Equal contribution &nbsp; <sup>&dagger;</sup>Corresponding author
+</p>
+
+<p align="center">
+  <a href="https://arxiv.org/abs/xxxx.xxxxx"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge" alt="Paper"></a>
+  <a href="https://huggingface.co/FineVLA"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
+  <a href="https://huggingface.co/datasets/FineVLA/RoboFine-Bench"><img src="https://img.shields.io/badge/HuggingFace-Benchmark-yellow?style=for-the-badge&logo=huggingface" alt="Benchmark"></a>
+  <a href="https://github.com/EricsXt/FineVLA"><img src="https://img.shields.io/badge/GitHub-FineVLA-blue?style=for-the-badge&logo=github" alt="GitHub"></a>
+</p>
 
 **FineVLA** is a unified, fully open-source framework for fine-grained instruction alignment in Vision-Language-Action (VLA) learning. We argue that to **steer** robot behavior, language must be aligned with the action choices that determine execution — not just *what* to do, but *how* to do it.
 
 <p align="center">
   <img src="assets/main_figure.png" alt="FineVLA Overview" width="100%">
 </p>
+<p align="center"><b>Figure 1: Overview of FineVLA.</b> FineVLA builds a closed loop for action-instruction alignment, connecting fine-grained data construction, robotic video understanding, scalable annotation, and steerable VLA policy learning.</p>
 
 ## Highlights
 
@@ -151,10 +163,11 @@ bash examples/Aloha/run_qwen35_GR00T_aloha_multi_FG1_1_dlc.sh
 ## Citation
 
 ```bibtex
-@article{hu2026finevla,
-  title={FineVLA: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
-  author={Hu, Xintong and Huang, Xuhong and Zhang, Jinyu and Yao, Yutong and Sun, Yuchong and Wang, Qiuyue and Li, Mingsheng and Xie, Sicheng and Liu, Yitao and Chen, Junhao and Chen, Yixuan and Zheng, Yingming and Bai, Shuai and Yu, Tao},
-  year={2026}
+@article{finevla2026,
+  title   = {FineVLA: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
+  author  = {},
+  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  year    = {2026}
 }
 ```
 
