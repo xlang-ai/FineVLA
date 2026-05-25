@@ -16,10 +16,17 @@
 
 <p align="center">
   <a href="https://arxiv.org/abs/xxxx.xxxxx"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge" alt="Paper"></a>
-  <a href="https://huggingface.co/FineVLA"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
-  <a href="https://huggingface.co/datasets/FineVLA/RoboFine-Bench"><img src="https://img.shields.io/badge/HuggingFace-Benchmark-yellow?style=for-the-badge&logo=huggingface" alt="Benchmark"></a>
-  <a href="https://github.com/EricsXt/FineVLA"><img src="https://img.shields.io/badge/GitHub-FineVLA-blue?style=for-the-badge&logo=github" alt="GitHub"></a>
+  <a href="https://huggingface.co/xlangai/RoboFine-VLM-387B-A17B"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
+  <a href="https://huggingface.co/datasets/xlangai/RoboFine-bench"><img src="https://img.shields.io/badge/HuggingFace-Benchmark-yellow?style=for-the-badge&logo=huggingface" alt="Benchmark"></a>
+  <a href="https://github.com/xlang-ai/FineVLA"><img src="https://img.shields.io/badge/GitHub-FineVLA-blue?style=for-the-badge&logo=github" alt="GitHub"></a>
+  <a href="FineVLA-Policy/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"></a>
 </p>
+
+## Updates
+
+- **2026-05-26:** FineVLA-Tool, RoboFine-Bench, and FineVLA-Policy code released.
+- **Coming soon:** RoboFine-VLM annotator and pretrained model checkpoints.
 
 **FineVLA** is a unified, fully open-source framework for fine-grained instruction alignment in Vision-Language-Action (VLA) learning. We argue that to **steer** robot behavior, language must be aligned with the action choices that determine execution — not just *what* to do, but *how* to do it.
 
@@ -50,7 +57,7 @@
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/EricsXt/FineVLA.git
+git clone https://github.com/xlang-ai/FineVLA.git
 cd FineVLA
 ```
 
@@ -60,7 +67,7 @@ See [FineVLA-Tool/README.md](FineVLA-Tool/README.md) for the data construction p
 
 ### RoboFine-Bench
 
-Benchmark data is hosted on HuggingFace: [FineVLA/RoboFine-Bench](https://huggingface.co/datasets/FineVLA/RoboFine-Bench)
+Benchmark data is hosted on HuggingFace: [FineVLA/RoboFine-Bench](https://huggingface.co/datasets/xlangai/RoboFine-bench)
 
 See [RoboFine-Bench/README.md](RoboFine-Bench/README.md) for evaluation code and instructions.
 
@@ -134,7 +141,7 @@ RoboFine-Bench evaluates whether VLMs capture execution-level manipulation detai
 
 **500 held-out videos** from 10 datasets, **32 embodiments**, **10,816 atomic facts** — strictly disjoint from all training data.
 
-For detailed benchmark description, evaluation code, and results, see [RoboFine-Bench on HuggingFace](https://huggingface.co/datasets/FineVLA/RoboFine-Bench).
+For detailed benchmark description, evaluation code, and results, see [RoboFine-Bench on HuggingFace](https://huggingface.co/datasets/xlangai/RoboFine-bench).
 
 ### 3. RoboFine-VLM
 
@@ -190,3 +197,10 @@ FineVLA-Policy is built on [StarVLA](https://github.com/starVLA/starVLA). We als
 ## License
 
 This project is released under the [MIT License](FineVLA-Policy/LICENSE).
+
+- **Code, tools, and pipeline:** MIT License
+- **Benchmark data:** Available on [HuggingFace](https://huggingface.co/datasets/xlangai/RoboFine-bench)
+
+## Disclaimer
+
+The authors are not responsible for any misuse of this project. The framework and associated tools are intended for research purposes in controlled environments. Use of the FineVLA name does not imply endorsement by the authors.
