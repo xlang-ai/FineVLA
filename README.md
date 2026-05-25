@@ -1,14 +1,10 @@
-<p align="center">
-  <img src="assets/XLANG_logo.png" alt="XLANG Lab" height="40">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/qwen_logo.png" alt="Qwen" height="40">
-</p>
-
 <h1 align="center">FineVLA: Fine-Grained Instruction Alignment<br>for Steerable Vision-Language-Action Policies</h1>
 
 <p align="center">
   <b>Xintong Hu<sup>*x</sup> &nbsp; Xuhong Huang<sup>*x</sup> &nbsp; Jinyu Zhang<sup>x</sup> &nbsp; Yutong Yao<sup>x</sup> &nbsp; Yuchong Sun<sup>q</sup> &nbsp; Qiuyue Wang<sup>q</sup></b><br>
-  <b>Mingsheng Li<sup>q</sup> &nbsp; Sicheng Xie<sup>q</sup> &nbsp; Yitao Liu<sup>x</sup> &nbsp; Junhao Chen<sup>x</sup> &nbsp; Yixuan Chen<sup>x</sup> &nbsp; Yingming Zheng<sup>x</sup> &nbsp; Shuai Bai<sup>q</sup> &nbsp; Tao Yu<sup>&dagger;x</sup></b><br>
-  <sup>x</sup>XLANG Lab, The University of Hong Kong &nbsp;&nbsp; <sup>q</sup>Qwen Team, Alibaba Inc.<br>
+  <b>Mingsheng Li<sup>q</sup> &nbsp; Sicheng Xie<sup>q</sup> &nbsp; Yitao Liu<sup>x</sup> &nbsp; Junhao Chen<sup>x</sup> &nbsp; Yixuan Chen<sup>x</sup> &nbsp; Yingming Zheng<sup>x</sup> &nbsp; Shuai Bai<sup>q</sup> &nbsp; Tao Yu<sup>&dagger;x</sup></b><br><br>
+  <sup>x</sup><img src="assets/XLANG_logo.png" alt="XLANG Lab" height="18"> XLANG Lab, The University of Hong Kong &nbsp;&nbsp;&nbsp;&nbsp;
+  <sup>q</sup><img src="assets/qwen_logo.png" alt="Qwen" height="18"> Qwen Team, Alibaba Inc.<br>
   <sup>*</sup>Equal contribution &nbsp; <sup>&dagger;</sup>Corresponding author
 </p>
 
