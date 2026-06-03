@@ -72,8 +72,13 @@ python filter_by_state_action_frame.py $VLA_DATA_ROOT/BC_Z \
 
 ## Dependencies
 
+```bash
+pip install -r requirements.txt
+```
+
 ```
 numpy
+pandas
 pyarrow
 matplotlib
 tqdm
