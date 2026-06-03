@@ -11,7 +11,7 @@ None 表示暂不按帧数过滤，仅统计并记录「task 为空」的 episod
 # 1.筛选掉帧数过少的episode
 # 数据集名称（与 Lerobot_v21 下目录名或「顶层目录名」对应）-> 最小允许帧数
 # 若某数据集有多层子目录，脚本会先用完整相对路径查找，再用顶层名查找
-from numpy._core.numeric import False_
+import os
 
 
 DATASET_MIN_FRAME = {
@@ -119,7 +119,7 @@ PLOT = False
 NUM_WORKERS = 96
 
 # 数据根目录（Lerobot_v21 的绝对路径）
-DATA_ROOT = "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21"
+DATA_ROOT = os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21")
 
 # 查找 meta 时需避开的目录名（不进入这些目录向下找）
 SKIP_DIRS = {"video", "videos", "data", "unified_output"}

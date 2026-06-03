@@ -10,6 +10,7 @@ VLA 轨迹聚类系统 —— 数据集配置。
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -74,7 +75,7 @@ class DatasetConfig:
 # ═══════════════════════════════════════════════════════════
 #  数据集根目录
 # ═══════════════════════════════════════════════════════════
-DATA_ROOT = "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21"
+DATA_ROOT = os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21")
 
 # ═══════════════════════════════════════════════════════════
 #  各数据集配置

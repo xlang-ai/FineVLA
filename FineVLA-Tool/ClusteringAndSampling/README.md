@@ -178,13 +178,21 @@ DTW 的原始距离 `dp[N][M]` 会随轨迹长度增长（路径越长，累加�
 ## 文件结构
 
 ```
-Clustering/
-├── README.md                 # 本文件
-├── requirements.txt          # Python 依赖
-├── trajectory_loader.py      # 轨迹数据加载模块
-├── dtw_distance.py           # DTW 距离计算（numba JIT 加速）
-├── clustering_analysis.py    # 聚类算法 + 可视化
-└── run_analysis.py           # 命令行主入口
+ClusteringAndSampling/
+├── README.md                              # 本文件
+├── requirements.txt                       # Python 依赖
+├── config.py                              # 数据集配置（目录结构、字段映射、DTW 参数）
+├── run_analysis.py                        # 单数据集聚类分析入口
+├── batch_run.py                           # 批量运行所有数据集的聚类分析
+├── batch_run_by_task.py                   # 按 task 分组聚类（适用于 BC_Z/RT-1 等）
+├── collect_cluster_representation.py      # 收集每 cluster 代表性 episode
+├── sample_filtered_episodes.py            # 从过滤后的数据集中随机采样
+└── utils/
+    ├── __init__.py
+    ├── trajectory_loader.py               # 轨迹数据加载模块
+    ├── dtw_distance.py                    # DTW 距离计算（numba JIT 加速）
+    ├── clustering_analysis.py             # 聚类算法 + 可视化
+    └── sample_all.py                      # 采样与记录生成工具
 ```
 
 ### `trajectory_loader.py` — 轨迹加载

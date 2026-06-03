@@ -30,7 +30,7 @@ from data_parser import (
     load_parquet_data,
 )
 
-FILTER_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Filter"))
+FILTER_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "CanonicalizeAndClean"))
 if FILTER_DIR not in sys.path:
     sys.path.insert(0, FILTER_DIR)
 FILTER_UTILS_DIR = os.path.join(FILTER_DIR, "utils")
