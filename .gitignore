@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 *.pyo
+.env
+.env.*
 *.egg-info/
 *.eggs/
 dist/
@@ -11,6 +13,9 @@ hf_*/
 *.log
 *.tmp
 *.bak
+logs/
+inputs/
+outputs/
 
 .DS_Store
 .vscode/
