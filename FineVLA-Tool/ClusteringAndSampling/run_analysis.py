@@ -13,7 +13,7 @@ VLA 轨迹 Action/State 相似度分析与聚类 —— 主入口。
     # 单子数据集
     python run_analysis.py \
         --dataset_name RDT \
-        --dataset_root /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/RDT-yhq/airpods_on_second_layer \
+        --dataset_root $VLA_DATA_ROOT/RDT-yhq/airpods_on_second_layer \
         --side both --n_clusters 4 \
         --recursive --max_depth 2 --min_cluster_size 3 \
         --output_dir ./results_test
@@ -25,7 +25,7 @@ VLA 轨迹 Action/State 相似度分析与聚类 —— 主入口。
         --load_cache ./results/distance_matrix.npz
 
     # 测试跑多个子数据集
-    cd /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Annotation/Joint2Action/Clustering
+    cd ClusteringAndSampling/
 
        
     

@@ -302,8 +302,8 @@ TARGET_EEF_ACTION_TYPE = "abs_quat"
 
 """
 测试：
-python convert_unified.py "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/BC_Z" --episodes 1 --dry-run \
-    --output-dir "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Annotation/Filter"
+python convert_unified.py "$VLA_DATA_ROOT/BC_Z" --episodes 1 --dry-run \
+    --output-dir ./output
 """
 def main():
     parser = argparse.ArgumentParser(description="Convert dataset to unified state/action representation")

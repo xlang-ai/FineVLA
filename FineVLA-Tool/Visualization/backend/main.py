@@ -211,7 +211,7 @@ async def api_data(dataset_root: str, chunk: int, episode: int):
     }
 
 
-DATA_ROOT = "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21"
+DATA_ROOT = os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21")
 
 
 @app.get("/api/list_subs")

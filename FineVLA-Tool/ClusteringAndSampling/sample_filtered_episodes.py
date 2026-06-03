@@ -7,7 +7,7 @@
 用法:
     # droid 数据集（普通），采样 1 万条
     python sample_filtered_episodes.py \
-        --dataset_root /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/droid_1.0.1 \
+        --dataset_root $VLA_DATA_ROOT/droid_1.0.1 \
         --dataset_label droid_1.0.1 \
         --id_prefix droid \
         --process_type simple \
@@ -16,7 +16,7 @@
 
     # droid_RoboInter 数据集（提取 raw_steps），采样 1 万条
     python sample_filtered_episodes.py \
-        --dataset_root /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/droid_RoboInter \
+        --dataset_root $VLA_DATA_ROOT/droid_RoboInter \
         --dataset_label droid_robointer \
         --id_prefix droid_robointer \
         --process_type robointer \
@@ -296,7 +296,7 @@ def main():
     dataset_root = Path(args.dataset_root).resolve()
     dataset_label = args.dataset_label or dataset_root.name
     id_prefix = args.id_prefix or dataset_root.name
-    lerobot_root = Path("/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21")
+    lerobot_root = Path(os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21"))
 
     # 1. 查找 filter_report.json
     reports = find_filter_reports(str(dataset_root))

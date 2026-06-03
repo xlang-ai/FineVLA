@@ -5,7 +5,7 @@
 None 表示暂不按帧数过滤，仅统计并记录「task 为空」的 episode。
 
   python filter_by_state_action_frame.py \
-      /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/RH20T-RoboInter \
+      $VLA_DATA_ROOT/RH20T-RoboInter \
       --episodes 10 --force-reconvert
 """
 # 1.筛选掉帧数过少的episode
@@ -130,8 +130,8 @@ EPISODE_FILENAMES = ["episodes.jsonl", "episode.jsonl"]
 
 """
 
-python convert_unified.py "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/BC_Z" --episodes 1 --dry-run \
-    --output-dir "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Annotation/Filter"
+python convert_unified.py "$VLA_DATA_ROOT/BC_Z" --episodes 1 --dry-run \
+    --output-dir "./output"
 
-python filter_by_state_action_frame.py /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/droid_RoboInter --force-reconvert --episode 100
+python filter_by_state_action_frame.py $VLA_DATA_ROOT/droid_RoboInter --force-reconvert --episode 100
 """

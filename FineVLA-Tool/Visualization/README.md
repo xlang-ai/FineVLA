@@ -26,7 +26,7 @@ python main.py
 在输入框中粘贴 parquet 文件的绝对路径，例如：
 
 ```
-/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLA_Data/Lerobot_v21/Galaxea-Open-World-Dataset/Adjust_The_Air_Conditioner_Temperature_20250711_006/data/chunk-000/episode_000000.parquet
+$VLA_DATA_ROOT/Galaxea-Open-World-Dataset/Adjust_The_Air_Conditioner_Temperature_20250711_006/data/chunk-000/episode_000000.parquet
 ```
 
 点击 Load 即可。
