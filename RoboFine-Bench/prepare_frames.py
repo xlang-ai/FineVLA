@@ -78,18 +78,9 @@ def main():
         sample_dir.mkdir(parents=True, exist_ok=True)
 
         for view_name in views:
-            view_info = videos.get(view_name, {})
-            video_rel = view_info.get("video_path", "")
-            if not video_rel:
-                continue
-
             video_path = os.path.join(args.video_dir, dataset, sample_id, f"{view_name}.mp4")
             if not os.path.exists(video_path):
-                alt_path = os.path.join(args.video_dir, video_rel)
-                if os.path.exists(alt_path):
-                    video_path = alt_path
-                else:
-                    continue
+                continue
 
             try:
                 frames = decode_video_frames(video_path, args.fps)
