@@ -4,33 +4,16 @@ Data construction pipeline for **FineVLA**: from raw heterogeneous robot dataset
 
 ## Pipeline Overview
 
-```
-Raw Datasets (10 sources, 972K trajectories)
-        │
-        ▼
-┌─────────────────────────┐
-│  CanonicalizeAndClean   │  Unify state/action to 80-dim representation
-│                         │  Filter by frame count, task, L2 divergence
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│  ClusteringAndSampling  │  DTW-based trajectory clustering
-│                         │  Select representative episodes per cluster
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│  AnnotationPipeline     │  VLM-powered multi-stage annotation
-│                         │  Generate fine-grained action descriptions
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│  RealANNO-Guidance      │  Human annotation guidelines & examples
-│                         │  Quality review reference
-└─────────────────────────┘
-```
+<p align="center">
+  <img src="tool_pipeline.png" alt="FineVLA-Tool Pipeline" width="100%">
+</p>
+
+FineVLA-Tool converts large-scale heterogeneous robot demonstrations into action-aligned fine-grained instruction data through four stages:
+
+1. **CanonicalizeAndClean** — Raw trajectories from 10 open-source datasets are converted into a unified 80-dim state/action representation, and quality filters remove invalid videos, corrupted, or inconsistent trajectories.
+2. **ClusteringAndSampling** — DTW-based similarity computation and clustering identify representative trajectories, reducing redundancy while preserving diverse manipulation strategies.
+3. **AnnotationPipeline** — Selected trajectories are decomposed into step-level descriptions and annotated with a ten-dimensional fine-grained schema using VLMs.
+4. **RealANNO-Guidance** — Human verification guidelines ensure annotation quality.
 
 ## Modules
 
