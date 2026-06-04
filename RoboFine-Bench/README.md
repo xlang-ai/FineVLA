@@ -11,7 +11,7 @@ pip install openai tqdm
 Download the benchmark data from Hugging Face:
 ```bash
 # Or clone directly
-git clone https://huggingface.co/datasets/FineVLA/RoboFine-Bench data/
+git clone https://huggingface.co/datasets/xlangai/RoboFine-bench data/
 ```
 
 ## Evaluation
@@ -66,7 +66,7 @@ RoboFine-Bench/
 
 ## Data
 
-Benchmark data is hosted on Hugging Face: [FineVLA/RoboFine-Bench](https://huggingface.co/datasets/FineVLA/RoboFine-Bench)
+Benchmark data is hosted on Hugging Face: [xlangai/RoboFine-bench](https://huggingface.co/datasets/xlangai/RoboFine-bench)
 
 - `videos/` — Robot manipulation videos from 10 datasets
 - `EvalSets.json` — Caption evaluation set with GT annotations
