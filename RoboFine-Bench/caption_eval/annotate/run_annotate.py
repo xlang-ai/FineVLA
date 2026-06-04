@@ -39,10 +39,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("annotation")
 
-_BASE_DIR = "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLM4Robotics_Benchmark"
-DEFAULT_EVALSETS = os.path.join(_BASE_DIR, "Eval_Set/EvalSets.json")
-DEFAULT_FRAME_INDEX = os.path.join(_BASE_DIR, "Eval_Set/frame_index.jsonl")
-DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "CaptionEval/CaptionResult")
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_BASE_DIR = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+DEFAULT_EVALSETS = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
+DEFAULT_FRAME_INDEX = os.path.join(_BASE_DIR, "EvalData", "frame_index.jsonl")
+DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "CaptionEval", "CaptionResult")
 
 _client_lock = threading.Lock()
 _client = None

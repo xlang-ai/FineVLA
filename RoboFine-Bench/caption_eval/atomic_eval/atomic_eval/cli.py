@@ -32,37 +32,37 @@ def main():
         epilog="""
 示例:
   # Phase 1: 提取 GT 原子事实（只运行一次）
-  python -m CaptionEval.AtomicEval.atomic_eval extract-gt \\
-    --evalsets Eval_Set/EvalSets.json \\
-    --output CaptionEval/AtomicResult/GT_AtomicFacts.jsonl
+  python -m caption_eval.atomic_eval.atomic_eval extract-gt \\
+    --evalsets EvalData/EvalSets.json \\
+    --output EvalData/GT_AtomicFacts.jsonl
 
   # Phase 2 (完整): 提取 caption 事实 + 对齐 + 评分
-  python -m CaptionEval.AtomicEval.atomic_eval evaluate \\
-    --gt-facts Eval_Set/Human_Review_AtomicFacts.jsonl \\
-    --caption Eval_Result/xxx_CaptionResult.jsonl \\
-    --output-dir Eval_Result/xxx_AtomicEval/
+  python -m caption_eval.atomic_eval.atomic_eval evaluate \\
+    --gt-facts EvalData/GT_AtomicFacts.jsonl \\
+    --caption CaptionEval/CaptionResult/xxx_CaptionResult.jsonl \\
+    --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
   # Phase 2a (单独): 仅提取 caption 原子事实 (thinking=ON)
-  python -m CaptionEval.AtomicEval.atomic_eval extract-caption \\
-    --gt-facts Eval_Set/Human_Review_AtomicFacts.jsonl \\
-    --caption Eval_Result/xxx_CaptionResult.jsonl \\
-    --output-dir Eval_Result/xxx_AtomicEval/
+  python -m caption_eval.atomic_eval.atomic_eval extract-caption \\
+    --gt-facts EvalData/GT_AtomicFacts.jsonl \\
+    --caption CaptionEval/CaptionResult/xxx_CaptionResult.jsonl \\
+    --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
   # Phase 2b (单独): 仅做对齐比对 (thinking=OFF)
-  python -m CaptionEval.AtomicEval.atomic_eval align \\
-    --gt-facts Eval_Set/Human_Review_AtomicFacts.jsonl \\
-    --caption Eval_Result/xxx_CaptionResult.jsonl \\
-    --output-dir Eval_Result/xxx_AtomicEval/
+  python -m caption_eval.atomic_eval.atomic_eval align \\
+    --gt-facts EvalData/GT_AtomicFacts.jsonl \\
+    --caption CaptionEval/CaptionResult/xxx_CaptionResult.jsonl \\
+    --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
   # 仅重新计算分数
-  python -m CaptionEval.AtomicEval.atomic_eval score-only \\
-    --judge-raw Eval_Result/xxx_AtomicEval/judge_raw.jsonl \\
-    --output-dir Eval_Result/xxx_AtomicEval/
+  python -m caption_eval.atomic_eval.atomic_eval score-only \\
+    --judge-raw CaptionEval/AtomicResult/xxx_AtomicEval/judge_raw.jsonl \\
+    --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
   # 跨模型汇总
-  python -m CaptionEval.AtomicEval.atomic_eval summary \\
-    --results-dirs Eval_Result/*_AtomicEval/ \\
-    --output Eval_Result/cross_model_summary.csv
+  python -m caption_eval.atomic_eval.atomic_eval summary \\
+    --results-dirs CaptionEval/AtomicResult/*_AtomicEval/ \\
+    --output CaptionEval/cross_model_summary.csv
 """,
     )
 

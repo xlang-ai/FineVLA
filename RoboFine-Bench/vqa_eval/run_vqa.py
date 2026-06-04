@@ -36,7 +36,7 @@ from vqa_config import get_view, get_views, get_fps, get_dataset_dir
 # =========================================================================
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))   # .../VQAEval
-_BASE_DIR = os.path.dirname(_SCRIPT_DIR)                   # .../VLM4Robotics_Benchmark
+_BASE_DIR = os.path.dirname(_SCRIPT_DIR)                   # .../RoboFine-Bench
 
 # =========================================================================
 # Configuration (self-contained, no external config.py dependency)
@@ -262,11 +262,11 @@ def _download_video_to_parts(
 # Defaults (all relative to _BASE_DIR)
 # =========================================================================
 
-DEFAULT_QA_FILE = os.path.join(_BASE_DIR, "Eval_Set", "QAEvalSets.json")
-DEFAULT_INPUT_FILE = os.path.join(_BASE_DIR, "Eval_Set", "EvalSets.json")
+DEFAULT_QA_FILE = os.path.join(_BASE_DIR, "EvalData", "QAEvalSets.json")
+DEFAULT_INPUT_FILE = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
 DEFAULT_VQA_FRAME_INDEX = os.path.join(_SCRIPT_DIR, "vqa_frame_index.jsonl")
 DEFAULT_OUTPUT_DIR = os.path.join(_SCRIPT_DIR, "results")
-VQA_VIDEO_DIR = os.path.join(_BASE_DIR, "Eval_Set", "Videos")
+VQA_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "Videos")
 
 
 # =========================================================================

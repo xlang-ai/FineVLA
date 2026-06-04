@@ -15,29 +15,29 @@ Evaluation code for **RoboFine-Bench** — a benchmark for fine-grained robotic 
 Benchmark data is hosted on Hugging Face: [xlangai/RoboFine-bench](https://huggingface.co/datasets/xlangai/RoboFine-bench)
 
 ```bash
-# Install Git LFS (required for large files)
+cd RoboFine-Bench/
+
+# Install Git LFS (required for video files)
 git lfs install
 
-# Clone the dataset into Eval_Set/ directory
-git clone https://huggingface.co/datasets/xlangai/RoboFine-bench Eval_Set/
+# Clone the dataset into EvalData/ directory
+git clone https://huggingface.co/datasets/xlangai/RoboFine-bench EvalData/
 ```
 
 After download, your directory should look like:
 
 ```
-<project_root>/
-├── Eval_Set/
-│   ├── EvalSets.json              # Evaluation samples with GT annotations
-│   ├── QAEvalSets.json            # VQA questions and answers
-│   ├── GT_AtomicFacts.jsonl       # Pre-extracted GT atomic facts (for Caption scoring)
-│   ├── frame_index.jsonl          # Pre-uploaded frame URLs (for Caption generation)
-│   └── Videos/                    # Robot manipulation videos
+RoboFine-Bench/
+├── EvalData/                          # Downloaded from HuggingFace
+│   ├── EvalSets.json                  # Evaluation samples with GT annotations
+│   ├── QAEvalSets.json                # VQA questions and answers
+│   ├── GT_AtomicFacts.jsonl           # Pre-extracted GT atomic facts
+│   └── videos/                        # Robot manipulation videos
 │       ├── BridgeDataV2/
 │       ├── BC-Z/
 │       └── ...
-└── RoboFine-Bench/                # This evaluation code
-    ├── vqa_eval/
-    └── caption_eval/
+├── vqa_eval/                          # VQA evaluation code
+└── caption_eval/                      # Caption evaluation code
 ```
 
 ## 2. Installation
@@ -61,8 +61,8 @@ The VQA track tests whether VLMs can answer fine-grained questions about robot m
 ```bash
 python RoboFine-Bench/vqa_eval/run_vqa.py \
     --model qwen3-vl-plus \
-    --qa Eval_Set/QAEvalSets.json \
-    --input Eval_Set/EvalSets.json \
+    --qa EvalData/QAEvalSets.json \
+    --input EvalData/EvalSets.json \
     --num-workers 16
 ```
 
@@ -71,8 +71,8 @@ python RoboFine-Bench/vqa_eval/run_vqa.py \
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--model` | `qwen3-vl-plus` | VLM model name |
-| `--qa` | `Eval_Set/QAEvalSets.json` | VQA questions file |
-| `--input` | `Eval_Set/EvalSets.json` | Evaluation samples file |
+| `--qa` | `EvalData/QAEvalSets.json` | VQA questions file |
+| `--input` | `EvalData/EvalSets.json` | Evaluation samples file |
 | `--base-url` | DashScope URL | API endpoint |
 | `--num-workers` | `1` | Parallel API call threads |
 | `--thinking` | `true` | Enable model reasoning mode |
@@ -114,8 +114,8 @@ The Caption track evaluates step-level action description quality through atomic
 ```bash
 python RoboFine-Bench/caption_eval/annotate/run_annotate.py \
     --model qwen3.5-plus \
-    --evalsets Eval_Set/EvalSets.json \
-    --frame-index Eval_Set/frame_index.jsonl \
+    --evalsets EvalData/EvalSets.json \
+    --frame-index EvalData/frame_index.jsonl \
     --output-dir results/CaptionResult/ \
     --num-workers 16
 ```
@@ -124,8 +124,8 @@ For **hard mode** (no task instruction in prompt):
 ```bash
 python RoboFine-Bench/caption_eval/annotate/run_annotate.py \
     --model qwen3.5-plus \
-    --evalsets Eval_Set/EvalSets.json \
-    --frame-index Eval_Set/frame_index.jsonl \
+    --evalsets EvalData/EvalSets.json \
+    --frame-index EvalData/frame_index.jsonl \
     --output-dir results/CaptionResult/hard/ \
     --num-workers 16 \
     --no-instruction
@@ -145,7 +145,7 @@ Score the generated captions against ground-truth atomic facts using Direct Alig
 
 ```bash
 python -m caption_eval.atomic_eval.atomic_eval direct-align \
-    --gt-facts Eval_Set/GT_AtomicFacts.jsonl \
+    --gt-facts EvalData/GT_AtomicFacts.jsonl \
     --caption results/CaptionResult/qwen3_5-plus_CaptionResult.jsonl \
     --output-dir results/AtomicResult/qwen3_5-plus/ \
     --num-workers 8 \
