@@ -63,7 +63,7 @@ FineVLA-Policy supports multiple VLA architectures through a modular design:
 | **StarVLA-PI** | Flow Matching | Diffusion-based continuous action prediction (pi_0 style) |
 | **StarVLA-FAST** | FAST Tokenizer | Autoregressive discrete action tokens (pi_0-FAST style) |
 
-All frameworks share a **Qwen2.5-VL / Qwen3-VL** backbone and follow the same training and evaluation API.
+All frameworks share a **Qwen3.5-VL-4B** backbone and follow the same training and evaluation API.
 
 ## Installation
 
@@ -109,7 +109,7 @@ We have verified that `flash-attn==2.7.4.post1` works well with CUDA `12.0` and 
 python starVLA/model/framework/QwenGR00T.py
 ```
 
-Download [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) and place it at `./playground/Pretrained_models/Qwen3-VL-4B-Instruct`. The script will build the model and print its architecture.
+Download [Qwen3.5-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3.5-VL-4B-Instruct) and place it at `./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct`. The script will build the model and print its architecture.
 
 ### Training
 
