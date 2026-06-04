@@ -21,3 +21,4 @@ outputs/
 .vscode/
 .idea/
 _tests/
+EvalData/
