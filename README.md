@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://arxiv.org/abs/2605.27284"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge" alt="Paper"></a>
-  <a href="https://huggingface.co/xlangai/RoboFine-VLM-387B-A17B"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
+  <a href="https://huggingface.co/xlangai/RoboFine-VLM-397B-A17B"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
   <a href="https://huggingface.co/datasets/xlangai/RoboFine-bench"><img src="https://img.shields.io/badge/HuggingFace-Benchmark-yellow?style=for-the-badge&logo=huggingface" alt="Benchmark"></a>
   <a href="FineVLA-Policy/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"></a>
 </p>
@@ -47,7 +47,7 @@
 | [**FineVLA-Tool**](FineVLA-Tool/) | Data construction pipeline: format unification, clustering, and fine-grained annotation | Released |
 | [**RoboFine-Bench**](RoboFine-Bench/) | Fine-grained robotic video understanding benchmark (500 videos, 10,816 facts, 1,030 VQA questions) | Released |
 | [**FineVLA-Policy**](FineVLA-Policy/) | VLA policy training with fine-grained instruction supervision (StarVLA-based) | Released |
-| **RoboFine-VLM** | Robotics-specialized VLM annotator (fine-tuned Qwen3.5-397B-A17B) | Coming Soon |
+| [**RoboFine-VLM**](https://huggingface.co/xlangai/RoboFine-VLM-397B-A17B) | Robotics-specialized VLM annotator (fine-tuned Qwen3.5-397B-A17B) | Released |
 | **Model Checkpoints** | Pretrained and fine-tuned policy checkpoints on HuggingFace | Coming Soon |
 
 ## Getting Started
