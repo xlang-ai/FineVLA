@@ -185,16 +185,6 @@ FineVLA-Policy is part of the larger FineVLA framework:
 | [**RoboFine-Bench**](https://github.com/EricsXt/FineVLA) | Benchmark for evaluating fine-grained robotic video understanding (VQA + Captioning) |
 | **FineVLA-Policy** (this repo) | VLA policy training with fine-grained instruction supervision |
 
-## Citation
-
-```bibtex
-@article{hu2026finevla,
-  title={FineVLA: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
-  author={Hu, Xintong and Huang, Xuhong and Zhang, Jinyu and Yao, Yutong and Sun, Yuchong and Wang, Qiuyue and Li, Mingsheng and Liu, Yitao and Chen, Yixuan and Zheng, Yingming and Bai, Shuai and Yu, Tao},
-  year={2026}
-}
-```
-
 ## Acknowledgements
 
 FineVLA-Policy is built on top of [StarVLA](https://github.com/starVLA/starVLA). We also gratefully acknowledge:
