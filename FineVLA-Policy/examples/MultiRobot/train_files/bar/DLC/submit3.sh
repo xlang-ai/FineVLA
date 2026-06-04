@@ -52,7 +52,7 @@ export WANDB_API_KEY='local-1647bcc5479ab0da87b5c153002383e4c8a83867'
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenGR00TN1d6_epx3_randominti
 freeze_module_list=''
-base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 config_yaml=./examples/MultiRobot/train_files/starvla_cotrain_multiRobot_exp3.yaml
 data_root=playground/Datasets
 data_mix=multi_robot

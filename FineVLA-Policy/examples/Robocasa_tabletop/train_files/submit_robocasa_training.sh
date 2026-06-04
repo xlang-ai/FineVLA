@@ -46,7 +46,7 @@ proxy_on
 
 export Framework_name=QwenPI_v2
 export base_vlm=./playground/Pretrained_models/Qwen2.5-VL-3B-Instruct # must be a local path, due to simpler will run in other where
-export base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct-Action
+export base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct-Action
 export freeze_module_list=""
 export action_input_dim=2560
 export DIT_TYPE="DiT-B"

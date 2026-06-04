@@ -50,7 +50,7 @@ cd /mnt/cpfs_m6_29e5gphu/data/user/jinhui/Projects/starVLA
 ###########################################################################################
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenOFT
-base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 freeze_module_list='' # just for fast debug, sota is under fully FT, i.g., freeze_module_list=""
 DIT_TYPE="DiT-B"
 config_yaml=./examples/Behavior/train_files/starvla_cotrain_behavior.yaml

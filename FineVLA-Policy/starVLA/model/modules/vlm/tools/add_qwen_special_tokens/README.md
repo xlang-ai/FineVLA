@@ -7,8 +7,8 @@ Quickly add new special tokens to Qwen/Qwen2.5-VL-3B-Instruct (or compatible mod
 ```bash
 
 
-source_model_id=playground/Pretrained_models/Qwen3-VL-4B-Instruct
-target_model_id=playground/Pretrained_models/Qwen3-VL-4B-Instruct-Action
+source_model_id=playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
+target_model_id=playground/Pretrained_models/Qwen3.5-VL-4B-Instruct-Action
 fast_token_list=starVLA/model/modules/vlm/tools/add_qwen_special_tokens/fast_tokens.txt
 
 python starVLA/model/modules/vlm/tools/add_qwen_special_tokens/add_special_tokens_to_qwen.py \

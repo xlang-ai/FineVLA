@@ -11,7 +11,7 @@ export NO_ALBUMENTATIONS_UPDATE=1
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenOFT
 freeze_module_list=${FREEZE_MODULES:-''}
-base_vlm=playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 config_yaml=./examples/Robocasa365/train_files/starvla_train_robocasa365.yaml
 robocasa365_data_root=playground/Datasets
 data_mix=robocasa365_single

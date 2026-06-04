@@ -197,7 +197,7 @@ FineVLA-Policy trains VLA policies under two architectures (StarVLA-OFT and Star
 
 ## Acknowledgements
 
-FineVLA-Policy is built on [StarVLA](https://github.com/starVLA/starVLA). We also gratefully acknowledge [LeRobot](https://github.com/huggingface/lerobot), [GR00T](https://github.com/NVIDIA/Isaac-GR00T), [DeepSpeed](https://github.com/deepspeedai/DeepSpeed), and [Qwen-VL](https://github.com/QwenLM/Qwen3-VL).
+FineVLA-Policy is built on [StarVLA](https://github.com/starVLA/starVLA). We also gratefully acknowledge [LeRobot](https://github.com/huggingface/lerobot), [GR00T](https://github.com/NVIDIA/Isaac-GR00T), [DeepSpeed](https://github.com/deepspeedai/DeepSpeed), and [Qwen-VL](https://github.com/QwenLM/Qwen3.5-VL).
 
 ## License
 

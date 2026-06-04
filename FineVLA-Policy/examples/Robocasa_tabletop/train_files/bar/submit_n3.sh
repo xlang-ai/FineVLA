@@ -49,7 +49,7 @@ echo "RUNNING:"
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenGR00TN1d6_epx3
 freeze_module_list=''
-base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 config_yaml=./examples/MultiRobot/train_files/starvla_cotrain_multiRobot_exp3.yaml
 data_root_dir=playground/Datasets/PhysicalAI-Robotics-GR00T-X-Embodiment-Sim
 data_mix=fourier_gr1_unified_1000

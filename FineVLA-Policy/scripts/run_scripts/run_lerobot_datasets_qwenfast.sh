@@ -12,7 +12,7 @@ export NCCL_TIMEOUT=1000  # timeout set to 1 hour (unit: seconds)
 # === Please modify the following paths according to your environment ===
 ## Model
 Framework_name=QwenFast
-base_vlm=StarVLA/Qwen3-VL-4B-Instruct-Action
+base_vlm=StarVLA/Qwen3.5-VL-4B-Instruct-Action
 action_input_dim=2048
 ## Data
 oxe_data_root=playground/Datasets/OXE_LEROBOT

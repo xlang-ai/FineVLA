@@ -12,7 +12,7 @@ export NCCL_TIMEOUT=1000  # timeout set to 1 hour (unit: seconds)
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenOFT
 freeze_module_list=''
-base_vlm=playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 config_yaml=./examples/Robotwin/train_files/starvla_cotrain_robotwin.yaml
 run_root_dir=./results/Checkpoints
 data_root_dir=playground/Datasets/RoboTwin-Clean

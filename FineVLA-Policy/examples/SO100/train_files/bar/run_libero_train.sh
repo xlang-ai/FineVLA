@@ -12,7 +12,7 @@ cd /root/Jinhui/Projects/starVLA
 ###########################################################################################
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenOFT
-base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 base_vlm=/cpfs29jb/data/limingsheng.lms/vla-cpt-ckpt/qwen-4b/1119-qwen3-4b-s3-baselinesft/hf_ckpts_open/iter_0004000
 freeze_module_list=''
 base_vlm=Qwen/Qwen2.5-VL-3B-Instruct

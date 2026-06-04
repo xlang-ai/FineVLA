@@ -20,3 +20,4 @@ outputs/
 .DS_Store
 .vscode/
 .idea/
+_tests/

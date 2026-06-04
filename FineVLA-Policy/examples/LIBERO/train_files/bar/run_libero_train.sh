@@ -14,7 +14,7 @@ export NCCL_SOCKET_TIMEOUT_MS=360000
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenGR00T
 freeze_module_list=''
-base_vlm=playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 config_yaml=./examples/LIBERO/train_files/starvla_cotrain_libero.yaml
 libero_data_root=playground/Datasets/LEROBOT_LIBERO_DATA
 data_mix=libero_all

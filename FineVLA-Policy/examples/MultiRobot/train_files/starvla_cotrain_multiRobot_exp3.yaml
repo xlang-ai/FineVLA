@@ -9,7 +9,7 @@ is_debug: false
 framework:
   name: Qwen_xGR00T_exp3
   qwenvl:
-    base_vlm: ./playground/Pretrained_models/Qwen3-VL-4B-Instruct-Action
+    base_vlm: ./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct-Action
     attn_implementation: flash_attention_2
     vl_hidden_dim: 2560
   dino:

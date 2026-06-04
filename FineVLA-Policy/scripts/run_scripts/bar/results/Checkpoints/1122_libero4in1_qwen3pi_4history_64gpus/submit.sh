@@ -48,7 +48,7 @@ echo "RUNNING:"
 ###########################################################################################
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenPI
-base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 freeze_module_list=''
 config_yaml=./starVLA/config/training/starvla_cotrain_libero.yaml
 libero_data_root=playground/Datasets/OXE_LEROBOT_DATASET

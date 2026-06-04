@@ -12,7 +12,7 @@ export NCCL_TIMEOUT=1000  # timeout set to 1 hour (unit: seconds)
 ###########################################################################################
 # === Please modify the following paths according to your environment ===
 Framework_name=QwenOFT
-base_vlm=./playground/Pretrained_models/Qwen3-VL-4B-Instruct
+base_vlm=./playground/Pretrained_models/Qwen3.5-VL-4B-Instruct
 freeze_module_list='' # just for fast debug, sota is under fully FT, i.g., freeze_module_list=""
 DIT_TYPE="DiT-B"
 data_root_dir=./playground/Datasets/behavior-1k

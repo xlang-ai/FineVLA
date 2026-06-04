@@ -202,7 +202,7 @@ FineVLA-Policy is built on top of [StarVLA](https://github.com/starVLA/starVLA).
 - [LeRobot](https://github.com/huggingface/lerobot)
 - [GR00T](https://github.com/NVIDIA/Isaac-GR00T)
 - [DeepSpeed](https://github.com/deepspeedai/DeepSpeed)
-- [Qwen-VL](https://github.com/QwenLM/Qwen3-VL)
+- [Qwen-VL](https://github.com/QwenLM/Qwen3.5-VL)
 
 ## License
 
