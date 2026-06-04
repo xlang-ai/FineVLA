@@ -24,8 +24,9 @@
 
 ## Updates
 
+- **2026-06-03:** RoboFine-VLM annotator released on [HuggingFace](https://huggingface.co/xlangai/RoboFine-VLM-397B-A17B).
 - **2026-05-26:** FineVLA-Tool, RoboFine-Bench, and FineVLA-Policy code released.
-- **Coming soon:** RoboFine-VLM annotator and pretrained model checkpoints.
+- **Coming soon:** Pretrained and fine-tuned policy checkpoints.
 
 **FineVLA** is a unified, fully open-source framework for fine-grained instruction alignment in Vision-Language-Action (VLA) learning. We argue that to **steer** robot behavior, language must be aligned with the action choices that determine execution — not just *what* to do, but *how* to do it.
 
