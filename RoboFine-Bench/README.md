@@ -184,6 +184,11 @@ bash RoboFine-Bench/caption_eval/run_direct_align.sh hard
 ```
 RoboFine-Bench/
 ├── benchmark_overview.png             # Benchmark overview figure
+├── prepare_frames.py                  # Pre-extract video frames for offline use
+├── models/                            # Model interface for custom models
+│   ├── base_model.py                  # BaseVLM abstract class
+│   ├── api_model.py                   # Built-in OpenAI-compatible implementation
+│   └── example_local_model.py         # Example: local HuggingFace model
 ├── eval_set/
 │   └── prepare_evalsets_input.py      # Data preparation (internal use)
 ├── vqa_eval/
@@ -220,6 +225,51 @@ The evaluation scripts support multiple VLM providers out of the box:
 | Google (Gemini) | `vertex_ai.gemini-3.1-pro-preview` |
 | OpenAI | `openai.gpt-5.4-2026-03-05` |
 | Doubao | `doubao.doubao-seed-2-0-pro-260215` |
+
+## 7. Evaluate Your Own Model
+
+To evaluate a custom model (local HuggingFace model, vLLM server, etc.), implement the `BaseVLM` interface:
+
+### Step 1: Pre-extract frames
+
+```bash
+python prepare_frames.py \
+    --evalsets EvalData/EvalSets.json \
+    --video-dir EvalData/Videos \
+    --output-dir EvalData/frames \
+    --fps 2.0
+```
+
+### Step 2: Implement BaseVLM
+
+```python
+from models.base_model import BaseVLM
+
+class MyModel(BaseVLM):
+    def __init__(self, model_path):
+        # Load your model
+        ...
+
+    def generate(self, images, prompt, system_prompt=""):
+        # images: list of PIL.Image (video frames at 2 FPS)
+        # Return: (response_text, token_usage_dict)
+        ...
+        return response, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+```
+
+See `models/example_local_model.py` for a complete example.
+
+### Step 3: Run evaluation
+
+Use your model with the built-in evaluation scripts, or write a simple loop:
+
+```python
+from models import APIModel  # or your custom model
+from vqa_eval.vqa_eval import evaluate_answer
+
+model = APIModel("qwen3-vl-plus")  # or MyModel("path/to/model")
+response, tokens = model.generate(frames, prompt, system_prompt)
+```
 
 ## Data
 
