@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/xxxx.xxxxx"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge" alt="Paper"></a>
+  <a href="https://arxiv.org/abs/2605.27284"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge" alt="Paper"></a>
   <a href="https://huggingface.co/xlangai/RoboFine-VLM-387B-A17B"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
   <a href="https://huggingface.co/datasets/xlangai/RoboFine-bench"><img src="https://img.shields.io/badge/HuggingFace-Benchmark-yellow?style=for-the-badge&logo=huggingface" alt="Benchmark"></a>
   <a href="https://github.com/xlang-ai/FineVLA"><img src="https://img.shields.io/badge/GitHub-FineVLA-blue?style=for-the-badge&logo=github" alt="GitHub"></a>
@@ -182,11 +182,16 @@ FineVLA-Policy trains VLA policies under two architectures (StarVLA-OFT and Star
 ## Citation
 
 ```bibtex
-@article{finevla2026,
-  title   = {FineVLA: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
-  author  = {},
-  journal = {arXiv preprint arXiv:XXXX.XXXXX},
-  year    = {2026}
+@misc{hu2026finevla,
+  title   = {{FineVLA}: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
+  author  = {Hu, Xintong and Huang, Xuhong and Zhang, Jinyu and Yao, Yutong and Sun, Yuchong and Wang, Qiuyue and Li, Mingsheng and Xie, Sicheng and Liu, Yitao and Chen, Junhao and Chen, Yixuan and Zheng, Yingming and Bai, Shuai and Yu, Tao},
+  year    = {2026},
+  month   = may,
+  eprint  = {2605.27284},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  doi     = {10.48550/arXiv.2605.27284},
+  url     = {https://arxiv.org/abs/2605.27284}
 }
 ```
 
