@@ -1,66 +1,70 @@
 #!/bin/bash
 #
-# VQA batch evaluation script (multi-round, video/image mode)
+# VQA Video Mode Evaluation Script
 #
 # Usage:
-#   bash run_vqa_eval.sh              # default 2 rounds
-#   bash run_vqa_eval.sh 5            # 5 rounds
-#   bash run_vqa_eval.sh 3 10         # 3 rounds, first 10 samples only
+#   nohup bash run_video_eval.sh > logs/video_eval.log 2>&1 &
 #
-# Video/FPS config: set INPUT_TYPE and FPS below
+#   # Custom workers and rounds:
+#   nohup bash run_video_eval.sh --workers 8 --rounds 3 > logs/video_eval.log 2>&1 &
 
 set -e
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 export no_proxy="oss-cn-shanghai.aliyuncs.com,oss-cn-beijing.aliyuncs.com"
 
-# Auto-detect paths relative to this script (works after git clone)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-VQA_DIR="${SCRIPT_DIR}"
-BASE_DIR="$(dirname "${SCRIPT_DIR}")"
+cd "${SCRIPT_DIR}"
 
 # ══════════════════════════════════════════════════════════
 #  Config
 # ══════════════════════════════════════════════════════════
 
-NUM_ROUNDS=${1:-2}
-END_SAMPLES=${2:-}
+NUM_WORKERS=16
+NUM_ROUNDS=1
+FPS=2
+INPUT_TYPE="video"
+THINKING="true"
 
-INPUT_TYPE="video"   # "video" = send .mp4 URL directly (low tokens); "image" = per-frame images
-FPS=2                # FPS hint for video mode (ignored when INPUT_TYPE=image)
+# Parse optional CLI arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --workers) NUM_WORKERS=$2; shift 2;;
+        --rounds)  NUM_ROUNDS=$2; shift 2;;
+        --fps)     FPS=$2; shift 2;;
+        --start)   START_IDX=$2; shift 2;;
+        --end)     END_IDX=$2; shift 2;;
+        *) echo "Unknown arg: $1"; exit 1;;
+    esac
+done
 
 MODEL_LIST=(
     qwen3-vl-plus
     qwen3.5-plus
-    doubao.doubao-seed-2-0-pro-260215
     vertex_ai.gemini-3.1-pro-preview
-    openai.gpt-5.4-2026-03-05
 )
 
-THINKING="true"
-NUM_WORKERS=16
-
 # ══════════════════════════════════════════════════════════
-#  Batch evaluation
+#  Run
 # ══════════════════════════════════════════════════════════
 
 TOTAL_MODELS=${#MODEL_LIST[@]}
 TOTAL_RUNS=$((TOTAL_MODELS * NUM_ROUNDS))
 
+mkdir -p logs
+
 echo "============================================================"
-echo "  VQA Batch Evaluation"
+echo "  VQA Video Mode Evaluation"
 echo "  Models:       ${MODEL_LIST[*]}"
-echo "  Model count:  ${TOTAL_MODELS}"
-echo "  Rounds:       ${NUM_ROUNDS}"
-echo "  Total runs:   ${TOTAL_RUNS}"
 echo "  Input type:   ${INPUT_TYPE}"
 echo "  FPS:          ${FPS}"
-echo "  Thinking:     ${THINKING}"
 echo "  Workers:      ${NUM_WORKERS}"
-echo "  Samples:      ${END_SAMPLES:-all}"
+echo "  Rounds:       ${NUM_ROUNDS}"
+echo "  Total runs:   ${TOTAL_RUNS}"
+echo "  Start:        ${START_IDX:-0}"
+echo "  End:          ${END_IDX:-all}"
+echo "  Started at:   $(date '+%Y-%m-%d %H:%M:%S')"
 echo "============================================================"
 echo ""
-
-cd "${VQA_DIR}"
 
 CURRENT=0
 for ROUND in $(seq 1 ${NUM_ROUNDS}); do
@@ -68,35 +72,31 @@ for ROUND in $(seq 1 ${NUM_ROUNDS}); do
     echo "============================================================"
     echo "  Round ${ROUND}/${NUM_ROUNDS}"
     echo "============================================================"
-    echo ""
 
     for MODEL_NAME in "${MODEL_LIST[@]}"; do
         CURRENT=$((CURRENT + 1))
         echo ""
         echo "------------------------------------------------------------"
-        echo "  [${CURRENT}/${TOTAL_RUNS}] Round ${ROUND} - Model: ${MODEL_NAME}"
+        echo "  [${CURRENT}/${TOTAL_RUNS}] Round ${ROUND} - ${MODEL_NAME}"
+        echo "  $(date '+%Y-%m-%d %H:%M:%S')"
         echo "------------------------------------------------------------"
         echo ""
 
         EXTRA_ARGS=""
-        if [ -n "${END_SAMPLES}" ]; then
-            EXTRA_ARGS="--start 0 --end ${END_SAMPLES}"
+        if [ -n "${START_IDX}" ]; then
+            EXTRA_ARGS="${EXTRA_ARGS} --start ${START_IDX}"
         fi
-
-        # GPT does not support video URL mode — force image mode
-        if [[ "${MODEL_NAME}" == *gpt* ]]; then
-            MODEL_INPUT_TYPE="image"
-        else
-            MODEL_INPUT_TYPE="${INPUT_TYPE}"
+        if [ -n "${END_IDX}" ]; then
+            EXTRA_ARGS="${EXTRA_ARGS} --end ${END_IDX}"
         fi
 
         python3 run_vqa.py \
             --model "${MODEL_NAME}" \
+            --input-type "${INPUT_TYPE}" \
+            --fps "${FPS}" \
             --thinking "${THINKING}" \
             --num-workers "${NUM_WORKERS}" \
             --round "${ROUND}" \
-            --input-type "${MODEL_INPUT_TYPE}" \
-            --fps "${FPS}" \
             ${EXTRA_ARGS}
 
         echo ""
@@ -108,5 +108,6 @@ done
 echo ""
 echo "============================================================"
 echo "  All done! ${TOTAL_MODELS} models x ${NUM_ROUNDS} rounds = ${TOTAL_RUNS} runs"
-echo "  Results: ${VQA_DIR}/results/"
+echo "  Finished at: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  Results: ${SCRIPT_DIR}/results/"
 echo "============================================================"

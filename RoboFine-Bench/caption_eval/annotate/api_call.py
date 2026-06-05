@@ -138,9 +138,19 @@ def _image_parts_to_gemini(image_parts: List[Dict]) -> List[Dict]:
 
 
 def _build_gemini_body(model: str, image_parts: List[Dict],
-                       system_prompt: str, user_prompt: str) -> Dict:
-    gemini_parts = _image_parts_to_gemini(image_parts)
-    gemini_parts.append({"text": user_prompt})
+                       system_prompt: str, user_prompt: str,
+                       video_urls: List[str] = None, fps: float = None) -> Dict:
+    if video_urls:
+        gemini_parts = []
+        for vu in video_urls:
+            part = {"fileData": {"fileUri": vu, "mimeType": "video/mp4"}}
+            if fps is not None:
+                part["videoMetadata"] = {"fps": fps}
+            gemini_parts.append(part)
+        gemini_parts.append({"text": user_prompt})
+    else:
+        gemini_parts = _image_parts_to_gemini(image_parts)
+        gemini_parts.append({"text": user_prompt})
 
     body: Dict = {
         "model": model,
@@ -172,8 +182,10 @@ def _build_gemini_body(model: str, image_parts: List[Dict],
 # Core API dispatchers
 # ---------------------------------------------------------------------------
 
-def _call_gemini_native(client, image_parts, system_prompt, user_prompt, model):
-    body = _build_gemini_body(model, image_parts, system_prompt, user_prompt)
+def _call_gemini_native(client, image_parts, system_prompt, user_prompt, model,
+                        video_urls=None, fps=None):
+    body = _build_gemini_body(model, image_parts, system_prompt, user_prompt,
+                              video_urls=video_urls, fps=fps)
     api_key = client.api_key
     base_url = str(client.base_url).rstrip("/")
     url = f"{base_url}/chat/completions"
@@ -254,34 +266,50 @@ def _doubao_limit_frames(image_parts: List[Dict], max_frames: int) -> List[Dict]
     return _subsample_parts(image_parts, max_frames)
 
 
-def _call_doubao_responses(client, image_parts, system_prompt, user_prompt, model):
-    parts = _doubao_limit_frames(image_parts, DOUBAO_MAX_FRAMES)
+def _call_doubao_responses(client, image_parts, system_prompt, user_prompt, model,
+                           video_urls=None):
     api_key = client.api_key
     base_url = str(client.base_url).rstrip("/")
     url = f"{base_url}/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     http = httpx.Client(timeout=httpx.Timeout(600.0, connect=60.0))
 
-    user_content = []
-    if system_prompt:
-        user_content.append({"type": "input_text", "text": system_prompt.strip()})
-    for p in parts:
-        if p.get("type") == "image_url":
-            user_content.append({"type": "input_image", "image_url": p["image_url"]["url"]})
-    user_content.append({"type": "input_text", "text": user_prompt})
+    use_video_mode = bool(video_urls)
 
-    body = {
-        "model": model,
-        "input": [{"type": "message", "role": "user", "content": user_content}],
-        "reasoning": {"effort": "high"},
-    }
+    if use_video_mode:
+        video_model = model if model.endswith("-completion") else model + "-completion"
+        combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
+        user_content = []
+        for vu in video_urls:
+            user_content.append({"type": "video_url", "video_url": {"url": vu}})
+        user_content.append({"type": "text", "text": combined_text})
+        body = {
+            "model": video_model,
+            "messages": [{"role": "user", "content": user_content}],
+            "reasoning": {"effort": "high"},
+        }
+        logger.info(f"Doubao: video_url mode, model={video_model}, {len(video_urls)} video(s)")
+    else:
+        parts = _doubao_limit_frames(image_parts, DOUBAO_MAX_FRAMES)
+        user_content = []
+        if system_prompt:
+            user_content.append({"type": "input_text", "text": system_prompt.strip()})
+        for p in parts:
+            if p.get("type") == "image_url":
+                user_content.append({"type": "input_image", "image_url": p["image_url"]["url"]})
+        user_content.append({"type": "input_text", "text": user_prompt})
+        body = {
+            "model": model,
+            "input": [{"type": "message", "role": "user", "content": user_content}],
+            "reasoning": {"effort": "high"},
+        }
 
     for attempt in range(MAX_RETRIES):
         try:
             resp = http.post(url, headers=headers, json=body)
             if resp.status_code != 200:
                 err = resp.text[:500]
-                if "exceed max" in err.lower() or "max message tokens" in err.lower():
+                if not use_video_mode and ("exceed max" in err.lower() or "max message tokens" in err.lower()):
                     current = sum(1 for c in user_content if c.get("type") == "input_image")
                     new_limit = current // 2
                     if new_limit >= 10:
@@ -301,18 +329,38 @@ def _call_doubao_responses(client, image_parts, system_prompt, user_prompt, mode
             data = resp.json()
             if data.get("error"):
                 raise Exception(f"API error: {data['error'].get('message', '')}")
+
             content = ""
-            for item in data.get("output", []):
-                if item.get("type") == "message":
-                    for c in item.get("content", []):
-                        if c.get("type") == "output_text":
-                            content += c.get("text", "")
-            usage = data.get("usage", {})
-            return content.strip(), {
-                "prompt_tokens": usage.get("input_tokens", 0),
-                "completion_tokens": usage.get("output_tokens", 0),
-                "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
-            }
+            if use_video_mode:
+                # Chat Completions response format
+                choices = data.get("choices", [])
+                if choices:
+                    msg = choices[0].get("message", {})
+                    c = msg.get("content", "")
+                    if isinstance(c, str):
+                        content = c
+                    elif isinstance(c, list):
+                        content = "".join(p.get("text", "") for p in c if isinstance(p, dict))
+                usage = data.get("usage", {})
+                token_info = {
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "completion_tokens": usage.get("completion_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0),
+                }
+            else:
+                # Responses API format
+                for item in data.get("output", []):
+                    if item.get("type") == "message":
+                        for c in item.get("content", []):
+                            if c.get("type") == "output_text":
+                                content += c.get("text", "")
+                usage = data.get("usage", {})
+                token_info = {
+                    "prompt_tokens": usage.get("input_tokens", 0),
+                    "completion_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+                }
+            return content.strip(), token_info
         except Exception as e:
             wait = min(2 ** attempt, 30) if ("429" in str(e) or "rate" in str(e).lower()) else 2
             logger.warning(f"Doubao attempt {attempt+1}: {str(e)[:200]}")
@@ -375,7 +423,8 @@ def _call_gpt_responses(client, image_parts, system_prompt, user_prompt, model):
     return "", {}
 
 
-def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, model):
+def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, model,
+                            video_urls=None, fps=None):
     """OpenAI-compatible path for Qwen, non-native Gemini, and other models."""
 
     has_views = any(
@@ -391,7 +440,18 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
         else:
             image_parts = _subsample_parts(image_parts, GPT_MAX_FRAMES)
 
-    if _is_qwen_model(model) and has_views:
+    if video_urls and _is_qwen_model(model):
+        combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
+        content = []
+        for vu in video_urls:
+            vpart = {"type": "video", "video": vu}
+            if fps is not None:
+                vpart["fps"] = fps
+            content.append(vpart)
+        content.append({"type": "text", "text": combined_text})
+        messages = [{"role": "user", "content": content}]
+        logger.info(f"Qwen: video URL mode, {len(video_urls)} video(s), fps={fps}")
+    elif _is_qwen_model(model) and has_views:
         combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
         content = []
         cur_frames = []
@@ -488,16 +548,21 @@ def call_api(
     system_prompt: str,
     user_prompt: str,
     model: str,
+    video_urls: List[str] = None,
+    fps: float = None,
 ) -> Tuple[str, Dict]:
     """Call VLM API with automatic model-specific dispatch and thinking enabled."""
 
     if _is_gemini_native_model(model):
-        return _call_gemini_native(client, image_parts, system_prompt, user_prompt, model)
+        return _call_gemini_native(client, image_parts, system_prompt, user_prompt, model,
+                                   video_urls=video_urls, fps=fps)
     if _is_gpt_responses_api_model(model):
         return _call_gpt_responses(client, image_parts, system_prompt, user_prompt, model)
     if _is_doubao_model(model):
-        return _call_doubao_responses(client, image_parts, system_prompt, user_prompt, model)
-    return _call_openai_compatible(client, image_parts, system_prompt, user_prompt, model)
+        return _call_doubao_responses(client, image_parts, system_prompt, user_prompt, model,
+                                      video_urls=video_urls)
+    return _call_openai_compatible(client, image_parts, system_prompt, user_prompt, model,
+                                   video_urls=video_urls, fps=fps)
 
 
 def extract_json_from_response(text: str) -> Optional[Dict]:

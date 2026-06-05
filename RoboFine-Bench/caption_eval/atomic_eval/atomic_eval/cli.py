@@ -10,19 +10,19 @@ from .config import DEFAULT_MODEL, DEFAULT_BASE_URL, DEFAULT_TEMPERATURE, DEFAUL
 def _add_common_api_args(parser):
     """Add common API-related arguments to a subparser."""
     parser.add_argument("--api-key", default=None,
-                        help="API Key (默认从环境变量 OPENAI_API_KEY 读取)")
+                        help="API Key (defaults to OPENAI_API_KEY env var)")
     parser.add_argument("--model", default=DEFAULT_MODEL,
-                        help=f"Judge 模型 (默认: {DEFAULT_MODEL})")
+                        help=f"Judge model (default: {DEFAULT_MODEL})")
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE,
-                        help=f"温度参数 (默认: {DEFAULT_TEMPERATURE})")
+                        help=f"Temperature parameter (default: {DEFAULT_TEMPERATURE})")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL,
-                        help=f"API Base URL (默认: {DEFAULT_BASE_URL})")
+                        help=f"API Base URL (default: {DEFAULT_BASE_URL})")
     parser.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES,
-                        help=f"最大重试次数 (默认: {DEFAULT_MAX_RETRIES})")
+                        help=f"Max retries (default: {DEFAULT_MAX_RETRIES})")
     parser.add_argument("--num-workers", type=int, default=DEFAULT_NUM_WORKERS,
-                        help=f"并行线程数 (默认: {DEFAULT_NUM_WORKERS})")
+                        help=f"Number of parallel workers (default: {DEFAULT_NUM_WORKERS})")
     parser.add_argument("--enable-thinking", action="store_true", default=False,
-                        help="开启 thinking/reasoning 模式（适用于 qwen3/qwen3.5 等支持的模型）")
+                        help="Enable thinking/reasoning mode (for models that support it, e.g. qwen3/qwen3.5)")
 
 
 def main():
@@ -30,36 +30,36 @@ def main():
         description="Atomic Fact Matching Evaluation Pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-示例:
-  # Phase 1: 提取 GT 原子事实（只运行一次）
+Examples:
+  # Phase 1: Extract GT atomic facts (run once)
   python -m caption_eval.atomic_eval.atomic_eval extract-gt \\
     --evalsets EvalData/EvalSets.json \\
     --output EvalData/GT_AtomicFacts.jsonl
 
-  # Phase 2 (完整): 提取 caption 事实 + 对齐 + 评分
+  # Phase 2 (full): Extract caption facts + align + score
   python -m caption_eval.atomic_eval.atomic_eval evaluate \\
     --gt-facts EvalData/GT_AtomicFacts.jsonl \\
     --caption CaptionEval/CaptionResult/xxx_CaptionResult.jsonl \\
     --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
-  # Phase 2a (单独): 仅提取 caption 原子事实 (thinking=ON)
+  # Phase 2a (standalone): Extract caption atomic facts only (thinking=ON)
   python -m caption_eval.atomic_eval.atomic_eval extract-caption \\
     --gt-facts EvalData/GT_AtomicFacts.jsonl \\
     --caption CaptionEval/CaptionResult/xxx_CaptionResult.jsonl \\
     --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
-  # Phase 2b (单独): 仅做对齐比对 (thinking=OFF)
+  # Phase 2b (standalone): Alignment only (thinking=OFF)
   python -m caption_eval.atomic_eval.atomic_eval align \\
     --gt-facts EvalData/GT_AtomicFacts.jsonl \\
     --caption CaptionEval/CaptionResult/xxx_CaptionResult.jsonl \\
     --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
-  # 仅重新计算分数
+  # Recompute scores only
   python -m caption_eval.atomic_eval.atomic_eval score-only \\
     --judge-raw CaptionEval/AtomicResult/xxx_AtomicEval/judge_raw.jsonl \\
     --output-dir CaptionEval/AtomicResult/xxx_AtomicEval/
 
-  # 跨模型汇总
+  # Cross-model summary
   python -m caption_eval.atomic_eval.atomic_eval summary \\
     --results-dirs CaptionEval/AtomicResult/*_AtomicEval/ \\
     --output CaptionEval/cross_model_summary.csv
@@ -71,89 +71,89 @@ def main():
     # ── extract-gt ──
     p_gt = subparsers.add_parser(
         "extract-gt",
-        help="Phase 1: 从 EvalSets.json 提取 GT 原子事实（只运行一次）",
+        help="Phase 1: Extract GT atomic facts from EvalSets.json (run once)",
     )
     p_gt.add_argument("--evalsets", required=True,
-                      help="EvalSets.json 文件路径（也兼容 Human_Review.jsonl）")
+                      help="Path to EvalSets.json (also compatible with Human_Review.jsonl)")
     p_gt.add_argument("--output", default="CaptionEval/AtomicResult/GT_AtomicFacts.jsonl",
-                      help="输出文件路径 (默认: CaptionEval/AtomicResult/GT_AtomicFacts.jsonl)")
+                      help="Output file path (default: CaptionEval/AtomicResult/GT_AtomicFacts.jsonl)")
     _add_common_api_args(p_gt)
 
     # ── extract-caption ──
     p_cap = subparsers.add_parser(
         "extract-caption",
-        help="Phase 2a: 从 AI Caption 提取原子事实（thinking=ON）",
+        help="Phase 2a: Extract atomic facts from AI captions (thinking=ON)",
     )
     p_cap.add_argument("--gt-facts", default=None,
-                       help="GT 原子事实文件路径（用于过滤样本，可选）")
+                       help="Path to GT atomic facts file (for sample filtering, optional)")
     p_cap.add_argument("--caption", required=True,
-                       help="CaptionResult.jsonl 文件路径")
+                       help="Path to CaptionResult.jsonl")
     p_cap.add_argument("--output-dir", required=True,
-                       help="输出目录路径")
+                       help="Output directory path")
     _add_common_api_args(p_cap)
 
     # ── align ──
     p_align = subparsers.add_parser(
         "align",
-        help="Phase 2b: 将 caption 原子事实与 GT 原子事实对齐比对（thinking=OFF）",
+        help="Phase 2b: Align caption atomic facts against GT atomic facts (thinking=OFF)",
     )
     p_align.add_argument("--gt-facts", required=True,
-                         help="Human_Review_AtomicFacts.jsonl 文件路径")
+                         help="Path to Human_Review_AtomicFacts.jsonl")
     p_align.add_argument("--caption", required=True,
-                         help="CaptionResult.jsonl 文件路径（用于提取模型名）")
+                         help="Path to CaptionResult.jsonl (used to extract model name)")
     p_align.add_argument("--output-dir", required=True,
-                         help="输出目录路径（需包含 caption_atomic_facts.jsonl）")
+                         help="Output directory path (must contain caption_atomic_facts.jsonl)")
     p_align.add_argument("--rerun-all", action="store_true", default=False,
-                         help="忽略已有结果，全部重新对齐（默认只重跑失败的）")
+                         help="Ignore existing results and re-align all (default: only re-run failures)")
     _add_common_api_args(p_align)
 
     # ── evaluate (2a + 2b combined) ──
     p_eval = subparsers.add_parser(
         "evaluate",
-        help="Phase 2: 完整评估（2a 提取 + 2b 对齐 + 评分）",
+        help="Phase 2: Full evaluation (2a extraction + 2b alignment + scoring)",
     )
     p_eval.add_argument("--gt-facts", required=True,
-                        help="Human_Review_AtomicFacts.jsonl 文件路径")
+                        help="Path to Human_Review_AtomicFacts.jsonl")
     p_eval.add_argument("--caption", required=True,
-                        help="CaptionResult.jsonl 文件路径")
+                        help="Path to CaptionResult.jsonl")
     p_eval.add_argument("--output-dir", required=True,
-                        help="输出目录路径")
+                        help="Output directory path")
     p_eval.add_argument("--rerun-all", action="store_true", default=False,
-                         help="忽略已有对齐结果，全部重新对齐")
+                         help="Ignore existing alignment results and re-align all")
     _add_common_api_args(p_eval)
 
     # ── direct-align ──
     p_direct = subparsers.add_parser(
         "direct-align",
-        help="Direct Alignment (Method B): GT 原子事实 + 原始 Caption → GPT 直接判断",
+        help="Direct Alignment (Method B): GT atomic facts + raw caption -> GPT direct judgment",
     )
     p_direct.add_argument("--gt-facts", required=True,
-                          help="GT_AtomicFacts.jsonl 文件路径")
+                          help="Path to GT_AtomicFacts.jsonl")
     p_direct.add_argument("--caption", required=True,
-                          help="CaptionResult.jsonl 文件路径")
+                          help="Path to CaptionResult.jsonl")
     p_direct.add_argument("--output-dir", required=True,
-                          help="输出目录路径")
+                          help="Output directory path")
     _add_common_api_args(p_direct)
 
     # ── score-only ──
     p_score = subparsers.add_parser(
         "score-only",
-        help="从已有的 judge_raw.jsonl 重新计算分数（不调用 API）",
+        help="Recompute scores from existing judge_raw.jsonl (no API calls)",
     )
     p_score.add_argument("--judge-raw", required=True,
-                         help="judge_raw.jsonl 文件路径")
+                         help="Path to judge_raw.jsonl")
     p_score.add_argument("--output-dir", required=True,
-                         help="输出目录路径")
+                         help="Output directory path")
 
     # ── summary ──
     p_summ = subparsers.add_parser(
         "summary",
-        help="跨模型汇总对比表",
+        help="Cross-model comparison summary table",
     )
     p_summ.add_argument("--results-dirs", nargs="+", required=True,
-                        help="各模型结果目录（包含 dataset_summary.json）")
+                        help="Result directories for each model (containing dataset_summary.json)")
     p_summ.add_argument("--output", default="Eval_Result/cross_model_summary.csv",
-                        help="输出 CSV 路径")
+                        help="Output CSV path")
 
     args = parser.parse_args()
 

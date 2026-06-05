@@ -61,16 +61,16 @@ def run_gt_extraction(args):
 
     # Load and normalize GT data (supports EvalSets.json and Human_Review.jsonl)
     input_path = getattr(args, 'evalsets', None) or getattr(args, 'human_review', None)
-    print(f"加载 GT 数据: {input_path}")
+    print(f"Loading GT data: {input_path}")
     samples = normalize_evalsets(input_path)
     ok_samples = [s for s in samples if s["status"] == "ok"]
-    print(f"  总样本: {len(samples)}, 有效: {len(ok_samples)}, "
-          f"跳过: {len(samples) - len(ok_samples)}")
+    print(f"  Total samples: {len(samples)}, valid: {len(ok_samples)}, "
+          f"skipped: {len(samples) - len(ok_samples)}")
 
     # Create client
     api_key = args.api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("请提供 API Key（--api-key 或环境变量 OPENAI_API_KEY）")
+        raise ValueError("Please provide an API Key (--api-key or OPENAI_API_KEY env var)")
     client = create_client(api_key, args.base_url)
 
     # Checkpoint: load existing results
@@ -93,17 +93,17 @@ def run_gt_extraction(args):
                     existing_results.append(rec)
                     processed_ids.add(sid)
         if error_ids:
-            print(f"  已成功: {len(processed_ids)}, 待重试: {len(error_ids)}")
+            print(f"  Succeeded: {len(processed_ids)}, pending retry: {len(error_ids)}")
         else:
-            print(f"  已处理: {len(processed_ids)} 个样本，从断点继续")
+            print(f"  Processed: {len(processed_ids)} samples, resuming from checkpoint")
 
     # Filter remaining
     remaining = [s for s in ok_samples if s["sample_id"] not in processed_ids]
     if not remaining:
-        print("所有样本已处理完成！")
+        print("All samples processed!")
         return
 
-    print(f"\n开始 GT 原子事实提取: {len(remaining)} 个样本 "
+    print(f"\nStarting GT atomic fact extraction: {len(remaining)} samples "
           f"(model={args.model}, workers={args.num_workers})")
     print("=" * 60)
 
@@ -176,9 +176,9 @@ def run_gt_extraction(args):
     _save_jsonl(output_path, existing_results)
 
     print(f"\n{'=' * 60}")
-    print(f"GT 原子事实提取完成！")
-    print(f"成功: {success_count}, 失败: {error_count}")
-    print(f"结果已保存到: {output_path}")
+    print(f"GT atomic fact extraction complete!")
+    print(f"Succeeded: {success_count}, failed: {error_count}")
+    print(f"Results saved to: {output_path}")
 
 
 # ── Phase 2a: Caption Atomic Fact Extraction ──────────────────────────
@@ -195,16 +195,16 @@ def run_caption_extraction(args):
         system_prompt = f.read()
 
     # Load caption results
-    print(f"加载 CaptionResult: {args.caption}")
+    print(f"Loading CaptionResult: {args.caption}")
     caption_map = load_caption_results(args.caption)
-    print(f"  Caption 样本: {len(caption_map)}")
+    print(f"  Caption samples: {len(caption_map)}")
 
     # Determine which sample_ids to process (intersect with GT if provided)
     if hasattr(args, 'gt_facts') and args.gt_facts:
         gt_map = load_gt_atomic_facts(args.gt_facts)
         gt_ok_ids = {k for k, v in gt_map.items() if v.get("status") == "ok"}
         target_ids = sorted(set(caption_map.keys()) & gt_ok_ids)
-        print(f"  与 GT 重叠样本: {len(target_ids)}")
+        print(f"  Samples overlapping with GT: {len(target_ids)}")
     else:
         target_ids = sorted(caption_map.keys())
 
@@ -215,7 +215,7 @@ def run_caption_extraction(args):
     # Create client
     api_key = args.api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("请提供 API Key（--api-key 或环境变量 OPENAI_API_KEY）")
+        raise ValueError("Please provide an API Key (--api-key or OPENAI_API_KEY env var)")
     client = create_client(api_key, args.base_url)
 
     # Checkpoint
@@ -237,16 +237,16 @@ def run_caption_extraction(args):
                     existing_results.append(rec)
                     processed_ids.add(sid)
         if error_ids:
-            print(f"  已成功: {len(processed_ids)}, 待重试: {len(error_ids)}")
+            print(f"  Succeeded: {len(processed_ids)}, pending retry: {len(error_ids)}")
         else:
-            print(f"  已处理: {len(processed_ids)} 个样本，从断点继续")
+            print(f"  Processed: {len(processed_ids)} samples, resuming from checkpoint")
 
     remaining_ids = [sid for sid in target_ids if sid not in processed_ids]
     if not remaining_ids:
-        print("Phase 2a: 所有样本已处理完成！")
+        print("Phase 2a: All samples processed!")
         return
 
-    print(f"\n开始 Caption 原子事实提取 (Phase 2a): {len(remaining_ids)} 个样本 "
+    print(f"\nStarting caption atomic fact extraction (Phase 2a): {len(remaining_ids)} samples "
           f"(model={args.model}, workers={args.num_workers}, thinking=ON)")
     print("=" * 60)
 
@@ -315,8 +315,8 @@ def run_caption_extraction(args):
 
     _save_jsonl(output_path, existing_results)
     print(f"\n{'=' * 60}")
-    print(f"Caption 原子事实提取完成！成功: {success_count}, 失败: {error_count}")
-    print(f"结果已保存到: {output_path}")
+    print(f"Caption atomic fact extraction complete! Succeeded: {success_count}, failed: {error_count}")
+    print(f"Results saved to: {output_path}")
 
 
 # ── Phase 2b: Per-Capability Alignment ──────────────────────────────
@@ -368,17 +368,17 @@ def run_alignment(args):
     with open(prompt_path, "r", encoding="utf-8") as f:
         system_prompt = f.read()
 
-    print(f"加载 GT 原子事实: {args.gt_facts}")
+    print(f"Loading GT atomic facts: {args.gt_facts}")
     gt_map = load_gt_atomic_facts(args.gt_facts)
     gt_ok = {k: v for k, v in gt_map.items() if v.get("status") == "ok"}
-    print(f"  有效 GT: {len(gt_ok)}")
+    print(f"  Valid GT: {len(gt_ok)}")
 
     output_dir = args.output_dir
     cap_facts_path = os.path.join(output_dir, "caption_atomic_facts.jsonl")
-    print(f"加载 Caption 原子事实: {cap_facts_path}")
+    print(f"Loading caption atomic facts: {cap_facts_path}")
     cap_map = load_caption_atomic_facts(cap_facts_path)
     cap_ok = {k: v for k, v in cap_map.items() if v.get("status") == "ok"}
-    print(f"  有效 Caption facts: {len(cap_ok)}")
+    print(f"  Valid caption facts: {len(cap_ok)}")
 
     caption_basename = os.path.basename(args.caption)
     if "_CaptionResult" in caption_basename:
@@ -390,11 +390,11 @@ def run_alignment(args):
 
     api_key = args.api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("请提供 API Key（--api-key 或环境变量 OPENAI_API_KEY）")
+        raise ValueError("Please provide an API Key (--api-key or OPENAI_API_KEY env var)")
     client = create_client(api_key, args.base_url)
 
     common_ids = sorted(set(gt_ok.keys()) & set(cap_ok.keys()))
-    print(f"  重叠样本: {len(common_ids)}")
+    print(f"  Overlapping samples: {len(common_ids)}")
 
     # ── Checkpoint: load capability-level progress ──
     progress_path = os.path.join(output_dir, "alignment_progress.jsonl")
@@ -409,7 +409,7 @@ def run_alignment(args):
                 if rec.get("status") == "ok":
                     key = (rec["sample_id"], rec["capability"])
                     completed_caps[key] = rec["judgment"]
-        print(f"  已完成 capability 对齐: {len(completed_caps)}")
+        print(f"  Completed capability alignments: {len(completed_caps)}")
 
     rerun_all = getattr(args, "rerun_all", False)
     judge_raw_path = os.path.join(output_dir, "judge_raw.jsonl")
@@ -429,10 +429,10 @@ def run_alignment(args):
                     continue
                 existing_judge.append(rec)
                 fully_done_ids.add(rec.get("sample_id", ""))
-        print(f"  已完成样本 (judge_raw): {len(fully_done_ids)}, "
-              f"丢弃旧 error: {skipped_errors}")
+        print(f"  Completed samples (judge_raw): {len(fully_done_ids)}, "
+              f"discarded old errors: {skipped_errors}")
     elif rerun_all:
-        print("  --rerun-all: 忽略已有结果，全部重新对齐")
+        print("  --rerun-all: Ignoring existing results, re-aligning all")
         if os.path.exists(progress_path):
             os.remove(progress_path)
             completed_caps.clear()
@@ -466,7 +466,7 @@ def run_alignment(args):
                 work_items.append((sid, cap))
 
     if auto_generated > 0:
-        print(f"  自动生成: {auto_generated} capabilities (trivial cases)")
+        print(f"  Auto-generated: {auto_generated} capabilities (trivial cases)")
 
     remaining_samples = set(sid for sid, _ in work_items)
     if not work_items:
@@ -474,12 +474,12 @@ def run_alignment(args):
             common_ids, fully_done_ids, completed_caps,
             gt_ok, cap_ok, existing_judge, judge_raw_path,
         )
-        print("Phase 2b: 所有样本已处理完成！重新计算分数...")
+        print("Phase 2b: All samples processed! Recomputing scores...")
         _finalize_outputs(existing_judge, gt_ok, output_dir, model_name)
         return
 
-    print(f"\n开始 Alignment 比对 (Phase 2b, 按 capability): {len(work_items)} 个工作项 "
-          f"({len(remaining_samples)} 个样本, model={args.model}, "
+    print(f"\nStarting alignment (Phase 2b, per-capability): {len(work_items)} work items "
+          f"({len(remaining_samples)} samples, model={args.model}, "
           f"workers={args.num_workers}, thinking=OFF)")
     print("=" * 60)
 
@@ -600,7 +600,7 @@ def run_alignment(args):
 
     _save_jsonl(judge_raw_path, existing_judge)
     print(f"\n{'=' * 60}")
-    print(f"Alignment 比对完成！成功: {success_count} caps, 失败: {error_count} caps")
+    print(f"Alignment complete! Succeeded: {success_count} caps, failed: {error_count} caps")
 
     sample_errors = []
     for rec in existing_judge:
@@ -608,12 +608,12 @@ def run_alignment(args):
         if isinstance(raw, dict) and raw.get("status") == "error":
             sample_errors.append(rec["sample_id"])
     if sample_errors:
-        print(f"\n失败样本 ({len(sample_errors)} 个):")
+        print(f"\nFailed samples ({len(sample_errors)}):")
         for sid in sample_errors[:20]:
             print(f"  - {sid}")
         if len(sample_errors) > 20:
-            print(f"  ... 及其他 {len(sample_errors) - 20} 个")
-        print(f"\n提示: 重新运行同一命令即可自动重试失败的 capability")
+            print(f"  ... and {len(sample_errors) - 20} more")
+        print(f"\nTip: Re-run the same command to automatically retry failed capabilities")
 
     _finalize_outputs(existing_judge, gt_ok, output_dir, model_name)
 
@@ -711,13 +711,13 @@ def _flush_cap_progress(
 def run_evaluation(args):
     """Full evaluation: extract caption facts (2a) + align (2b)."""
     print("=" * 60)
-    print("  Phase 2a: Caption 原子事实提取 (thinking=ON)")
+    print("  Phase 2a: Caption atomic fact extraction (thinking=ON)")
     print("=" * 60)
     run_caption_extraction(args)
 
     print("\n")
     print("=" * 60)
-    print("  Phase 2b: Alignment 比对 (thinking=OFF)")
+    print("  Phase 2b: Alignment (thinking=OFF)")
     print("=" * 60)
     run_alignment(args)
 
@@ -771,8 +771,8 @@ def _finalize_outputs(judge_records, gt_ok, output_dir, model_name):
 
     # Print summary
     print(f"\n{'=' * 60}")
-    print(f"模型: {model_name}")
-    print(f"评分样本: {summary['num_scored_samples']}/{summary['num_total_samples']}")
+    print(f"Model: {model_name}")
+    print(f"Scored samples: {summary['num_scored_samples']}/{summary['num_total_samples']}")
     print(f"Mean CaptionScore:     {summary['mean_caption_score']:.4f}")
     print(f"Mean Consistency:      {summary['mean_consistency_score']:.4f}")
     print(f"Mean Coverage:         {summary['mean_weighted_coverage']:.4f}")
@@ -788,7 +788,7 @@ def _finalize_outputs(judge_records, gt_ok, output_dir, model_name):
         print(f"{cap:<40} {_fmt(c):>12} {_fmt(v):>10} {_fmt(a):>12}")
     print("-" * 76)
 
-    print(f"\n结果目录: {os.path.abspath(os.path.dirname(scored_path))}")
+    print(f"\nResults directory: {os.path.abspath(os.path.dirname(scored_path))}")
 
 
 def _fmt(val) -> str:
@@ -840,7 +840,7 @@ def run_summary(args):
                     summaries.append(json.load(f))
 
     if not summaries:
-        print("未找到任何 dataset_summary.json 文件")
+        print("No dataset_summary.json files found")
         return
 
     # Write cross-model CSV
@@ -869,14 +869,14 @@ def run_summary(args):
                 row[f"{cap}_ah"] = cd.get("mean_anti_hallucination", "")
             writer.writerow(row)
 
-    print(f"跨模型汇总已保存到: {output_path}")
-    print(f"包含 {len(summaries)} 个模型")
+    print(f"Cross-model summary saved to: {output_path}")
+    print(f"Contains {len(summaries)} models")
 
 
 # ── Direct Alignment (Method B) ─────────────────────────────────────
 
 def run_direct_alignment(args):
-    """Run direct alignment: GT atomic facts + raw caption → GPT judges directly."""
+    """Run direct alignment: GT atomic facts + raw caption -> GPT judges directly."""
     prompt_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "prompts", "direct_alignment.txt"
@@ -884,14 +884,14 @@ def run_direct_alignment(args):
     with open(prompt_path, "r", encoding="utf-8") as f:
         system_prompt = f.read()
 
-    print(f"加载 GT 原子事实: {args.gt_facts}")
+    print(f"Loading GT atomic facts: {args.gt_facts}")
     gt_map = load_gt_atomic_facts(args.gt_facts)
     gt_ok = {k: v for k, v in gt_map.items() if v.get("status") == "ok"}
-    print(f"  有效 GT: {len(gt_ok)}")
+    print(f"  Valid GT: {len(gt_ok)}")
 
-    print(f"加载 CaptionResult: {args.caption}")
+    print(f"Loading CaptionResult: {args.caption}")
     caption_map = load_caption_results(args.caption)
-    print(f"  Caption 样本: {len(caption_map)}")
+    print(f"  Caption samples: {len(caption_map)}")
 
     caption_basename = os.path.basename(args.caption)
     if "_CaptionResult" in caption_basename:
@@ -904,11 +904,11 @@ def run_direct_alignment(args):
 
     api_key = args.api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("请提供 API Key（--api-key 或环境变量 OPENAI_API_KEY）")
+        raise ValueError("Please provide an API Key (--api-key or OPENAI_API_KEY env var)")
     client = create_client(api_key, args.base_url)
 
     common_ids = sorted(set(gt_ok.keys()) & set(caption_map.keys()))
-    print(f"  重叠样本: {len(common_ids)}")
+    print(f"  Overlapping samples: {len(common_ids)}")
 
     # Checkpoint: load existing results
     raw_path = os.path.join(output_dir, "direct_align_raw.jsonl")
@@ -929,17 +929,17 @@ def run_direct_alignment(args):
                     existing_results.append(rec)
                     processed_ids.add(sid)
         if error_ids:
-            print(f"  已成功: {len(processed_ids)}, 待重试: {len(error_ids)}")
+            print(f"  Succeeded: {len(processed_ids)}, pending retry: {len(error_ids)}")
         else:
-            print(f"  已处理: {len(processed_ids)} 个样本，从断点继续")
+            print(f"  Processed: {len(processed_ids)} samples, resuming from checkpoint")
 
     remaining = [sid for sid in common_ids if sid not in processed_ids]
     if not remaining:
-        print("所有样本已处理完成！重新计算分数...")
+        print("All samples processed! Recomputing scores...")
         _finalize_direct_alignment(existing_results, output_dir, model_name)
         return
 
-    print(f"\n开始 Direct Alignment: {len(remaining)} 个样本 "
+    print(f"\nStarting Direct Alignment: {len(remaining)} samples "
           f"(model={args.model}, workers={args.num_workers})")
     print("=" * 60)
 
@@ -1013,7 +1013,7 @@ def run_direct_alignment(args):
 
     _save_jsonl(raw_path, existing_results)
     print(f"\n{'=' * 60}")
-    print(f"Direct Alignment 完成！成功: {success_count}, 失败: {error_count}")
+    print(f"Direct Alignment complete! Succeeded: {success_count}, failed: {error_count}")
 
     _finalize_direct_alignment(existing_results, output_dir, model_name)
 

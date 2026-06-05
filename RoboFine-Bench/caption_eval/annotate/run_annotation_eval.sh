@@ -1,33 +1,37 @@
 #!/bin/bash
 #
-# 批量标注脚本: 5 个模型 × 500 条数据
+# Batch annotation script: 5 models x 500 samples
 #
-# 用法:
-#   bash CaptionEval/Annotation/run_annotation_eval.sh              # easy 模式 (含 instruction_raw)
-#   bash CaptionEval/Annotation/run_annotation_eval.sh hard         # hard 模式 (不含 instruction_raw)
-#   bash CaptionEval/Annotation/run_annotation_eval.sh hard 32      # hard 模式 + 32 线程
-#   bash CaptionEval/Annotation/run_annotation_eval.sh easy 16 10   # easy 模式 + 只测前 10 条
+# Usage:
+#   bash caption_eval/annotate/run_annotation_eval.sh              # easy mode (with instruction_raw)
+#   bash caption_eval/annotate/run_annotation_eval.sh hard         # hard mode (without instruction_raw)
+#   bash caption_eval/annotate/run_annotation_eval.sh hard 32      # hard mode + 32 workers
+#   bash caption_eval/annotate/run_annotation_eval.sh easy 16 10   # easy mode + only test first 10 samples
 #
-# nohup 运行:
-#   nohup bash CaptionEval/Annotation/run_annotation_eval.sh hard 16 > run_annotation.log 2>&1 &
+# Run in background:
+#   nohup bash caption_eval/annotate/run_annotation_eval.sh hard 16 > run_annotation.log 2>&1 &
 
 set -e
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 export no_proxy="oss-cn-shanghai.aliyuncs.com,oss-cn-beijing.aliyuncs.com"
 
-BASE_DIR="/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLM4Robotics_Benchmark"
-SCRIPT="${BASE_DIR}/CaptionEval/Annotation/run_annotate.py"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BASE_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SCRIPT="${SCRIPT_DIR}/run_annotate.py"
 
 MODE="${1:-easy}"
 NUM_WORKERS="${2:-16}"
 END_SAMPLES="${3:-}"
 
+FPS=4
+
+# model_name:input_type — GPT uses image mode (no video URL support)
 MODEL_LIST=(
-    qwen3-vl-plus
-    qwen3.5-plus
-    doubao.doubao-seed-2-0-pro-260215
-    openai.gpt-5.4-2026-03-05
-    vertex_ai.gemini-3.1-pro-preview
+    "qwen3-vl-plus:video"
+    "qwen3.5-plus:video"
+    "doubao.doubao-seed-2-0-pro-260215:video"
+    "openai.gpt-5.4-2026-03-05:image"
+    "vertex_ai.gemini-3.1-pro-preview:video"
 )
 
 if [ "${MODE}" == "hard" ]; then
@@ -44,23 +48,25 @@ TOTAL=${#MODEL_LIST[@]}
 echo "============================================================"
 echo "  Video Annotation (Single-Stage)"
 echo "  Mode:       ${MODE}"
+echo "  FPS:        ${FPS}"
 echo "  Output:     ${OUTPUT_DIR}"
-echo "  Models:     ${MODEL_LIST[*]}"
 echo "  Workers:    ${NUM_WORKERS}"
 echo "  Samples:    ${END_SAMPLES:-all}"
 echo "============================================================"
 echo ""
 
 CURRENT=0
-for MODEL_NAME in "${MODEL_LIST[@]}"; do
+for ENTRY in "${MODEL_LIST[@]}"; do
     CURRENT=$((CURRENT + 1))
+    MODEL_NAME="${ENTRY%%:*}"
+    INPUT_TYPE="${ENTRY##*:}"
 
     MODEL_TAG=$(echo "${MODEL_NAME}" | sed 's/[\/.]/_/g')
     RESULT_FILE="${OUTPUT_DIR}/${MODEL_TAG}_CaptionResult.jsonl"
 
     echo ""
     echo "------------------------------------------------------------"
-    echo "  [${CURRENT}/${TOTAL}] Model: ${MODEL_NAME}"
+    echo "  [${CURRENT}/${TOTAL}] Model: ${MODEL_NAME} (${INPUT_TYPE}, fps=${FPS})"
 
     if [ -f "${RESULT_FILE}" ]; then
         TOTAL_LINES=$(wc -l < "${RESULT_FILE}" | tr -d ' ')
@@ -87,6 +93,8 @@ for MODEL_NAME in "${MODEL_LIST[@]}"; do
 
     python "${SCRIPT}" \
         --model "${MODEL_NAME}" \
+        --input-type "${INPUT_TYPE}" \
+        --fps "${FPS}" \
         --output-dir "${OUTPUT_DIR}" \
         --num-workers "${NUM_WORKERS}" \
         ${NO_INSTR_FLAG} \

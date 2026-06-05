@@ -3,17 +3,23 @@
 Single-stage video annotation: call a VLM API to decompose robot manipulation
 videos into fine-grained steps.
 
-Reads EvalSets.json + frame_index.jsonl, selects single-view or multi-view
-prompt based on the number of views, calls the API once per sample, and writes
-results to CaptionEval/CaptionResult/{model}_CaptionResult.jsonl.
+Supports two input modes:
+  - video: send video URLs directly to the model (default, lower tokens)
+  - image: decode local videos at target FPS, send as base64 image list
 
 Usage:
-    python run_annotate.py --model qwen3.5-plus
-    python run_annotate.py --model qwen3.5-plus --start 0 --end 10
-    python run_annotate.py --model qwen3.5-plus --num-workers 16
+    # Video URL mode (default, fps=4)
+    python run_annotate.py --model qwen3.5-plus --input-type video --fps 4
+
+    # Image mode (decode local videos)
+    python run_annotate.py --model openai.gpt-5.4-2026-03-05 --input-type image --fps 4
+
+    # With frame_index.jsonl (pre-uploaded frame URLs)
+    python run_annotate.py --model qwen3.5-plus --input-type image --frame-index EvalData/frame_index.jsonl
 """
 
 import argparse
+import base64
 import json
 import logging
 import os
@@ -22,6 +28,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from io import BytesIO
 from typing import Dict, List, Optional, Set, Tuple
 
 from tqdm import tqdm
@@ -44,6 +51,7 @@ _BASE_DIR = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
 DEFAULT_EVALSETS = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
 DEFAULT_FRAME_INDEX = os.path.join(_BASE_DIR, "EvalData", "frame_index.jsonl")
 DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "CaptionEval", "CaptionResult")
+DEFAULT_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "Videos")
 
 _client_lock = threading.Lock()
 _client = None
@@ -56,6 +64,46 @@ def _get_client(base_url: str = None):
             if _client is None:
                 _client = create_api_client(base_url=base_url)
     return _client
+
+
+# ---------------------------------------------------------------------------
+# Video decode (for image mode)
+# ---------------------------------------------------------------------------
+
+def _decode_video_to_parts(
+    video_path: str, fps: float = 4.0, max_frames: int = 500,
+) -> List[Dict]:
+    """Decode local video file to base64 image_url parts."""
+    try:
+        import av
+    except ImportError:
+        raise ImportError("PyAV is required for image mode: pip install av")
+
+    container = av.open(video_path)
+    stream = container.streams.video[0]
+    sample_interval = 1.0 / fps if fps > 0 else 0
+    parts = []
+    next_sample_time = 0.0
+
+    try:
+        for frame in container.decode(video=0):
+            t = float(frame.pts * stream.time_base) if frame.pts is not None else 0
+            if t >= next_sample_time:
+                img = frame.to_image()
+                buf = BytesIO()
+                img.save(buf, format="JPEG", quality=85)
+                b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+                parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+                })
+                next_sample_time = t + sample_interval
+                if len(parts) >= max_frames:
+                    break
+    finally:
+        container.close()
+
+    return parts
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +265,40 @@ def _json_to_step_list(parsed) -> List[str]:
     return [str(v) for _, v in items if v and not isinstance(v, (dict, list))]
 
 
+def build_image_parts_from_video(
+    sample: Dict, video_dir: str, fps: float = 4.0,
+) -> Tuple[List[Dict], int, int]:
+    """Build image_parts by decoding local video files.
+
+    Returns: (image_parts, num_views_used, total_frames)
+    """
+    view_names = sample.get("meta", {}).get("view_names", [])
+    dataset = sample.get("dataset", "")
+    sid = sample["sample_id"]
+    is_multi = len(view_names) > 1
+    image_parts = []
+    total_frames = 0
+    views_used = 0
+
+    for i, vn in enumerate(view_names):
+        video_path = os.path.join(video_dir, dataset, sid, f"{vn}.mp4")
+        if not os.path.exists(video_path):
+            continue
+        views_used += 1
+        parts = _decode_video_to_parts(video_path, fps=fps)
+        if not parts:
+            continue
+
+        if is_multi:
+            label = classify_view(vn, i)
+            image_parts.append({"type": "text", "text": f"[View: {label}]"})
+
+        image_parts.extend(parts)
+        total_frames += len(parts)
+
+    return image_parts, views_used, total_frames
+
+
 # ---------------------------------------------------------------------------
 # Per-sample processing
 # ---------------------------------------------------------------------------
@@ -227,22 +309,48 @@ def process_one_sample(
     model: str,
     base_url: str = None,
     no_instruction: bool = False,
+    input_type: str = "video",
+    fps: float = 4.0,
+    video_dir: str = None,
 ) -> Dict:
-    """Process a single sample: build image_parts, call API, parse response."""
+    """Process a single sample: build image_parts or video_urls, call API, parse response."""
     sid = sample["sample_id"]
     dataset = sample.get("dataset", "")
     view_names = sample.get("meta", {}).get("view_names", [])
     instruction_raw = sample.get("instruction_raw", "")
 
-    image_parts, num_views, num_frames = build_image_parts(view_names, frame_views)
+    video_urls = None
+    image_parts = []
+    num_views = 0
+    num_frames = 0
 
-    if not image_parts:
+    if input_type == "video":
+        # Extract video URLs from EvalSets.json views field
+        sample_video_urls = [u for u in sample.get("views", {}).values()
+                            if isinstance(u, str) and u.startswith("http")]
+        if sample_video_urls:
+            video_urls = sample_video_urls
+            num_views = len(video_urls)
+        else:
+            logger.warning(f"  {sid}: no video URLs, falling back to image mode")
+            input_type = "image"
+
+    if input_type == "image":
+        if frame_views:
+            # Use pre-uploaded frame URLs from frame_index
+            image_parts, num_views, num_frames = build_image_parts(view_names, frame_views)
+        elif video_dir:
+            # Decode from local video files
+            image_parts, num_views, num_frames = build_image_parts_from_video(
+                sample, video_dir, fps=fps)
+
+    if not image_parts and not video_urls:
         return {
             "sample_id": sid,
             "dataset": dataset,
             "model": model,
             "call_success": False,
-            "error": "No frames available",
+            "error": "No frames or video URLs available",
             "timestamp": datetime.now().isoformat(),
         }
 
@@ -251,7 +359,8 @@ def process_one_sample(
 
     start_t = time.time()
     response_text, token_usage = call_api(
-        client, image_parts, system_prompt, user_prompt, model
+        client, image_parts, system_prompt, user_prompt, model,
+        video_urls=video_urls, fps=fps,
     )
     elapsed = time.time() - start_t
 
@@ -283,7 +392,12 @@ def main():
     parser = argparse.ArgumentParser(description="Single-stage video annotation")
     parser.add_argument("--model", required=True, help="Model name (e.g. qwen3.5-plus)")
     parser.add_argument("--evalsets", default=DEFAULT_EVALSETS, help="EvalSets.json path")
-    parser.add_argument("--frame-index", default=DEFAULT_FRAME_INDEX, help="frame_index.jsonl path")
+    parser.add_argument("--frame-index", default=None, help="frame_index.jsonl path (optional, for image mode)")
+    parser.add_argument("--input-type", choices=["video", "image"], default="video",
+                        help="Input mode: video (send video URL) or image (decode frames)")
+    parser.add_argument("--fps", type=float, default=4.0, help="Frames per second (default: 4.0)")
+    parser.add_argument("--video-dir", default=DEFAULT_VIDEO_DIR,
+                        help="Local video directory (for image mode fallback)")
     parser.add_argument("--output", default=None, help="Output JSONL path (auto-generated if omitted)")
     parser.add_argument("--output-dir", default=None, help="Output directory (overrides default CaptionResult dir)")
     parser.add_argument("--base-url", default=None, help="API base URL")
@@ -300,6 +414,8 @@ def main():
         args.output = os.path.join(out_dir, f"{model_tag}_CaptionResult.jsonl")
 
     logger.info(f"Model:        {args.model}")
+    logger.info(f"Input type:   {args.input_type}")
+    logger.info(f"FPS:          {args.fps}")
     logger.info(f"Output:       {args.output}")
     logger.info(f"Workers:      {args.num_workers}")
 
@@ -313,9 +429,15 @@ def main():
         samples = samples[s:e]
         logger.info(f"  Sliced to [{s}:{e}] -> {len(samples)} samples")
 
-    logger.info("Loading frame_index.jsonl ...")
-    frame_index = load_frame_index(args.frame_index)
-    logger.info(f"  {len(frame_index)} entries")
+    # Load frame_index (optional)
+    frame_index = {}
+    fi_path = args.frame_index or DEFAULT_FRAME_INDEX
+    if os.path.exists(fi_path):
+        logger.info(f"Loading frame_index: {fi_path}")
+        frame_index = load_frame_index(fi_path)
+        logger.info(f"  {len(frame_index)} entries")
+    elif args.input_type == "image":
+        logger.info(f"No frame_index found, will decode from local videos ({args.video_dir})")
 
     # Resume check
     completed = load_completed(args.output)
@@ -352,7 +474,12 @@ def main():
             for s in samples:
                 sid = s["sample_id"]
                 fv = frame_index.get(sid, {})
-                fut = pool.submit(process_one_sample, s, fv, args.model, args.base_url, args.no_instruction)
+                fut = pool.submit(
+                    process_one_sample, s, fv, args.model,
+                    args.base_url, args.no_instruction,
+                    input_type=args.input_type, fps=args.fps,
+                    video_dir=args.video_dir,
+                )
                 futures[fut] = sid
 
             pbar = tqdm(total=len(futures), desc=f"Annotating ({args.model})")

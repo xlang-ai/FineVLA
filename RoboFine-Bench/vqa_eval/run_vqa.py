@@ -2,12 +2,9 @@
 """
 VQA Test: ask VLM questions about robot manipulation videos.
 
-Two modes:
-  - OSS URL: if vqa_frame_index.jsonl exists, use pre-uploaded OSS URLs (fast, no frame limit)
-  - Video decode: decode video on-the-fly → base64 (no pre-upload needed)
-
 Usage:
-    python run_vqa.py --model qwen3-vl-plus                     # video decode mode
+    python run_vqa.py --model qwen3-vl-plus                     # video URL mode
+    python run_vqa.py --model qwen3-vl-plus --input-type image   # image list mode
     python run_vqa.py --model qwen3-vl-plus --thinking false     # disable thinking
     python run_vqa.py --model qwen3-vl-plus --end 10             # first 10 samples
 """
@@ -29,7 +26,7 @@ from tqdm import tqdm
 
 from vqa_prompts import SYSTEM_PROMPT, build_batch_prompt
 from vqa_eval import evaluate
-from vqa_config import get_view, get_views, get_fps, get_dataset_dir
+from vqa_config import get_view, get_views, get_dataset_dir
 
 # =========================================================================
 # Auto-detect project root (works after git clone)
@@ -106,10 +103,20 @@ def _image_parts_to_gemini_parts(image_parts: List[Dict]) -> List[Dict]:
 
 def _build_gemini_native_request_body(
     model: str, image_parts: List[Dict], system_prompt: str, user_prompt: str,
+    video_urls: List[str] = None, fps: float = None,
 ) -> Dict:
     """Build Gemini native protocol request body for DashScope."""
-    gemini_parts = _image_parts_to_gemini_parts(image_parts)
-    gemini_parts.append({"text": user_prompt})
+    if video_urls:
+        gemini_parts = []
+        for vu in video_urls:
+            part = {"fileData": {"fileUri": vu, "mimeType": "video/mp4"}}
+            if fps is not None:
+                part["videoMetadata"] = {"fps": fps}
+            gemini_parts.append(part)
+        gemini_parts.append({"text": user_prompt})
+    else:
+        gemini_parts = _image_parts_to_gemini_parts(image_parts)
+        gemini_parts.append({"text": user_prompt})
 
     body: Dict = {
         "model": model,
@@ -188,6 +195,99 @@ import base64
 from PIL import Image as PILImage
 
 
+def _decode_video_to_pil(
+    video_path: str, target_fps: float = 2.0, max_frames: int = 500,
+) -> List["PILImage.Image"]:
+    """Decode a video file to a list of PIL.Image frames."""
+    import av
+    container = av.open(video_path)
+    try:
+        stream = container.streams.video[0]
+        total = stream.frames or 0
+        fps = float(stream.average_rate) if stream.average_rate else 30.0
+        if total <= 0:
+            for _ in container.decode(video=0):
+                total += 1
+            container.seek(0)
+        interval = max(1, int(round(fps / target_fps))) if target_fps > 0 else 1
+        indices = list(range(0, total, interval))
+        if len(indices) > max_frames:
+            indices = [int(i * (total - 1) / (max_frames - 1)) for i in range(max_frames)]
+        target_set = set(indices)
+        frames = []
+        for idx, frame in enumerate(container.decode(video=0)):
+            if idx in target_set:
+                frames.append(PILImage.fromarray(frame.to_ndarray(format="rgb24")))
+        return frames
+    finally:
+        container.close()
+
+
+def _load_pil_frames(sample: Dict, fps: float = 2.0, frames_dir: str = None) -> Tuple[List, str]:
+    """Load video frames as PIL.Image list for custom model inference.
+
+    Returns (frames, description_string).
+    """
+    import glob as _glob
+
+    sid = sample.get("sample_id", "")
+    dataset = sample.get("dataset", "")
+
+    # Priority 1: pre-extracted frames directory
+    if frames_dir:
+        sample_dir = os.path.join(frames_dir, sid)
+        if os.path.isdir(sample_dir):
+            files = sorted(_glob.glob(os.path.join(sample_dir, "*.jpg")) +
+                           _glob.glob(os.path.join(sample_dir, "*.png")))
+            if files:
+                frames = [PILImage.open(f).convert("RGB") for f in files]
+                return frames, f"frames_dir({len(frames)}f)"
+
+    # Priority 2: local video files (EvalData/Videos/)
+    meta = sample.get("meta", {})
+    view_names = meta.get("view_names", [])
+    if not view_names:
+        view_names = get_views(dataset, sample_meta=meta)
+    if not view_names:
+        view_names = [get_view(dataset) or "video"]
+
+    all_frames = []
+    for vname in view_names:
+        vpath = os.path.join(VQA_VIDEO_DIR, dataset, sid, f"{vname}.mp4")
+        if os.path.exists(vpath):
+            try:
+                view_frames = _decode_video_to_pil(vpath, target_fps=fps)
+                all_frames.extend(view_frames)
+            except Exception as e:
+                logger.warning(f"  {sid}/{vname}: failed to decode local video: {e}")
+
+    if all_frames:
+        return all_frames, f"local({len(all_frames)}f, fps={fps})"
+
+    # Priority 3: download video from EvalSets.json view URLs (fallback)
+    views = sample.get("views", {})
+    import tempfile
+    for vname, vurl in views.items():
+        if not isinstance(vurl, str) or not vurl.startswith("http"):
+            continue
+        try:
+            dl = httpx.Client(timeout=httpx.Timeout(120.0, connect=30.0))
+            resp = dl.get(vurl, follow_redirects=True)
+            resp.raise_for_status()
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+                tmp.write(resp.content)
+                tmp_path = tmp.name
+            view_frames = _decode_video_to_pil(tmp_path, target_fps=fps)
+            all_frames.extend(view_frames)
+            os.unlink(tmp_path)
+        except Exception as e:
+            logger.warning(f"  {sid}/{vname}: failed to download video: {e}")
+
+    if all_frames:
+        return all_frames, f"downloaded({len(all_frames)}f, fps={fps})"
+    return [], ""
+
+
 def _decode_video_to_parts(
     video_path: str, target_fps: float = 2.0, max_frames: int = 500,
     resize_width: int = 512, jpeg_quality: int = 75,
@@ -264,7 +364,6 @@ def _download_video_to_parts(
 
 DEFAULT_QA_FILE = os.path.join(_BASE_DIR, "EvalData", "QAEvalSets.json")
 DEFAULT_INPUT_FILE = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
-DEFAULT_VQA_FRAME_INDEX = os.path.join(_SCRIPT_DIR, "vqa_frame_index.jsonl")
 DEFAULT_OUTPUT_DIR = os.path.join(_SCRIPT_DIR, "results")
 VQA_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "Videos")
 
@@ -304,25 +403,6 @@ def load_samples(input_path: str) -> Dict[str, Dict]:
     return samples
 
 
-def load_vqa_frame_index(index_path: str) -> Dict[str, Dict]:
-    """Load VQA frame index JSONL, return {sample_id: entry}.
-
-    Supports both formats:
-    - New multi-view: {sample_id, views: {view_name: {urls, num_frames}}}
-    - Old single-view: {sample_id, view, urls}
-    """
-    index = {}
-    with open(index_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                entry = json.loads(line)
-                sid = entry.get("sample_id", "")
-                if sid:
-                    index[sid] = entry
-    return index
-
-
 def load_completed(output_path: str) -> Tuple[Set[str], Set[str]]:
     """Load question_ids for resume. Returns (success_ids, failed_sample_ids).
 
@@ -356,20 +436,18 @@ def load_completed(output_path: str) -> Tuple[Set[str], Set[str]]:
 
 
 # =========================================================================
-# Image parts — single view per dataset (configured in vqa_config.py)
-# Two modes: OSS URL (from vqa_frame_index) or video decode (on-the-fly)
+# Image parts — video decode to base64
 # =========================================================================
 
 
 def get_multi_view_image_parts(
-    sample: Dict, vqa_frame_index: Optional[Dict] = None,
+    sample: Dict, fps: float = 2.0,
 ) -> Tuple[List[Dict], str]:
     """Get multi-view frame parts with [View: xxx] text labels.
 
     Priority:
-      1. vqa_frame_index OSS URLs (fast, pre-uploaded)
-      2. Local video decode from VQA_VIDEO_DIR → base64
-      3. Download video from EvalSets.json view URLs → decode (slowest)
+      1. Local video decode from VQA_VIDEO_DIR -> base64
+      2. Download video from EvalSets.json view URLs -> decode
     """
     sid = sample.get("sample_id", "")
     dataset = sample.get("dataset", "")
@@ -380,36 +458,7 @@ def get_multi_view_image_parts(
     if not view_names or len(view_names) < 2:
         return [], ""
 
-    fps = get_fps(dataset)
-
-    # Priority 1: VQA frame index (OSS URLs)
-    if vqa_frame_index and sid in vqa_frame_index:
-        entry = vqa_frame_index[sid]
-        if "views" in entry and isinstance(entry["views"], dict):
-            all_parts = []
-            desc_parts = []
-            for view_name in view_names:
-                view_data = entry["views"].get(view_name)
-                if not view_data or not view_data.get("urls"):
-                    continue
-                urls = view_data["urls"]
-                all_parts.append({"type": "text", "text": f"[View: {view_name}]"})
-                for u in urls:
-                    all_parts.append({"type": "image_url", "image_url": {"url": u}})
-                desc_parts.append(f"{view_name}({len(urls)}f)")
-            if all_parts:
-                desc = f"{'+'.join(desc_parts)}(oss)"
-                return all_parts, desc
-
-        urls = entry.get("urls", [])
-        if urls:
-            view = entry.get("view", "unknown")
-            parts = [
-                {"type": "text", "text": f"[View: {view}]"},
-            ] + [{"type": "image_url", "image_url": {"url": u}} for u in urls]
-            return parts, f"{view}({len(urls)}f, oss)"
-
-    # Priority 2: Local video decode → base64
+    # Priority 1: Local video decode -> base64
     all_parts = []
     desc_parts = []
     for view_name in view_names:
@@ -430,7 +479,7 @@ def get_multi_view_image_parts(
         desc = f"{'+'.join(desc_parts)}(local)"
         return all_parts, desc
 
-    # Priority 3: Download video from EvalSets.json view URLs
+    # Priority 2: Download video from EvalSets.json view URLs
     views_map = sample.get("views", {})
     if views_map and isinstance(views_map, dict):
         all_parts = []
@@ -452,21 +501,19 @@ def get_multi_view_image_parts(
 
 
 def get_image_parts(
-    sample: Dict, vqa_frame_index: Optional[Dict] = None,
+    sample: Dict, fps: float = 2.0,
 ) -> Tuple[List[Dict], str]:
     """Get image_url parts for a sample — single view.
 
     Priority:
-      1. vqa_frame_index OSS URLs
-      2. Local video decode
-      3. Download from EvalSets.json view URLs
+      1. Local video decode
+      2. Download from EvalSets.json view URLs
     """
     sid = sample.get("sample_id", "")
     dataset = sample.get("dataset", "")
     meta = sample.get("meta", {})
 
     view_name = get_view(dataset)
-    fps = get_fps(dataset)
 
     # For dynamic-view datasets (RoboMIND etc.), resolve from sample meta
     if not view_name:
@@ -477,28 +524,7 @@ def get_image_parts(
     if not view_name:
         return [], ""
 
-    # Priority 1: VQA frame index (OSS URLs)
-    if vqa_frame_index and sid in vqa_frame_index:
-        entry = vqa_frame_index[sid]
-        if "views" in entry and isinstance(entry["views"], dict):
-            view_data = entry["views"].get(view_name)
-            if view_data and view_data.get("urls"):
-                urls = view_data["urls"]
-                parts = [{"type": "image_url", "image_url": {"url": u}} for u in urls]
-                return parts, f"{view_name}({len(urls)} frames, oss)"
-            # Fallback: try first available view in frame index
-            if not view_data:
-                for vk, vd in entry["views"].items():
-                    if isinstance(vd, dict) and vd.get("urls"):
-                        urls = vd["urls"]
-                        parts = [{"type": "image_url", "image_url": {"url": u}} for u in urls]
-                        return parts, f"{vk}({len(urls)} frames, oss)"
-        urls = entry.get("urls", [])
-        if urls:
-            parts = [{"type": "image_url", "image_url": {"url": u}} for u in urls]
-            return parts, f"{entry.get('view', view_name)}({len(urls)} frames, oss)"
-
-    # Priority 2: Local video decode → base64
+    # Priority 1: Local video decode → base64
     video_path = os.path.join(VQA_VIDEO_DIR, dataset, sid, f"{view_name}.mp4")
     if os.path.exists(video_path):
         try:
@@ -508,7 +534,7 @@ def get_image_parts(
         except Exception as e:
             logger.warning(f"Failed to load {view_name} for {sid}: {e}")
 
-    # Priority 3: Download from EvalSets.json view URLs
+    # Priority 2: Download from EvalSets.json view URLs
     views_map = sample.get("views", {})
     if views_map and isinstance(views_map, dict):
         for vname_key in [view_name, *list(views_map.keys())[:1]]:
@@ -656,18 +682,15 @@ GPT_MAX_FRAMES = 490
 def _call_doubao_responses_api(
     client, image_parts: List[Dict], system_prompt: str, user_prompt: str,
     model: str, thinking: bool = True, max_retries: int = 5,
+    video_urls: List[str] = None,
 ) -> Tuple[str, Dict]:
-    """Call Doubao Responses API (doubao-seed-xxx) via DashScope.
+    """Call Doubao API (doubao-seed-xxx) via DashScope.
 
-    Doubao uses 'input' with type: "message" format (not "developer" + "user" like GPT).
-    Auto-subsamples frames exceeding DOUBAO_MAX_FRAMES.
+    Two modes:
+      - video_urls provided: Chat Completions format with video_url type (lower tokens)
+      - no video_urls: Responses API format with per-frame input_image (legacy)
     """
     import httpx
-
-    # Subsample if too many frames
-    parts = _subsample_parts(image_parts, DOUBAO_MAX_FRAMES)
-    if len(parts) < len(image_parts):
-        logger.info(f"Doubao: subsampled {len(image_parts)} → {len(parts)} frames")
 
     api_key = client.api_key
     base_url = str(client.base_url).rstrip("/")
@@ -675,86 +698,114 @@ def _call_doubao_responses_api(
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     http_client = httpx.Client(timeout=httpx.Timeout(600.0, connect=60.0))
 
-    # Build input in Doubao Responses API format
-    # Doubao uses a single user message with system_prompt prepended as text
-    user_content = []
-    # System prompt as first text block
-    if system_prompt:
-        user_content.append({"type": "input_text", "text": system_prompt.strip()})
+    use_video_mode = bool(video_urls)
 
-    # Images
-    for part in parts:
-        if part.get("type") == "image_url":
-            img_url = part["image_url"]["url"]
-            user_content.append({"type": "input_image", "image_url": img_url})
-
-    # User prompt
-    user_content.append({"type": "input_text", "text": user_prompt})
-
-    # Keep full model name (doubao.doubao-seed-xxx)
-    body = {
-        "model": model,
-        "input": [
-            {
-                "type": "message",
-                "role": "user",
-                "content": user_content,
-            }
-        ],
-    }
-
-    # Add reasoning config if thinking is enabled
-    if thinking:
-        body["reasoning"] = {"effort": "high"}
+    if use_video_mode:
+        # Chat/Completions endpoint: model name needs -completion suffix
+        video_model = model if model.endswith("-completion") else model + "-completion"
+        combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
+        user_content = []
+        for vu in video_urls:
+            user_content.append({"type": "video_url", "video_url": {"url": vu}})
+        user_content.append({"type": "text", "text": combined_text})
+        body = {
+            "model": video_model,
+            "messages": [{"role": "user", "content": user_content}],
+        }
+        if thinking:
+            body["reasoning"] = {"effort": "high"}
+        logger.info(f"Doubao: video_url mode (completion endpoint), model={video_model}, {len(video_urls)} video(s)")
+    else:
+        _has_views = any(
+            p.get("type") == "text" and str(p.get("text", "")).startswith("[View:")
+            for p in image_parts
+        )
+        if _has_views:
+            parts = _subsample_multiview_parts(image_parts, DOUBAO_MAX_FRAMES)
+        else:
+            parts = _subsample_parts(image_parts, DOUBAO_MAX_FRAMES)
+        if len(parts) < len(image_parts):
+            frame_count = sum(1 for p in parts if p.get("type") == "image_url")
+            logger.info(f"Doubao: subsampled {len(image_parts)} → {frame_count} frames")
+        user_content = []
+        if system_prompt:
+            user_content.append({"type": "input_text", "text": system_prompt.strip()})
+        for part in parts:
+            if part.get("type") == "text":
+                user_content.append({"type": "input_text", "text": part["text"]})
+            elif part.get("type") == "image_url":
+                img_url = part["image_url"]["url"]
+                user_content.append({"type": "input_image", "image_url": img_url})
+        user_content.append({"type": "input_text", "text": user_prompt})
+        body = {
+            "model": model,
+            "input": [{"type": "message", "role": "user", "content": user_content}],
+        }
+        if thinking:
+            body["reasoning"] = {"effort": "high"}
 
     for attempt in range(max_retries):
         try:
             resp = http_client.post(url, headers=headers, json=body)
             if resp.status_code != 200:
                 err_text = resp.text[:500]
-                # If token limit exceeded, retry with fewer frames
-                if "exceed max" in err_text.lower() or "max message tokens" in err_text.lower():
+                if not use_video_mode and ("exceed max" in err_text.lower() or "max message tokens" in err_text.lower()):
                     current_frames = sum(1 for c in user_content if c.get("type") == "input_image")
                     new_limit = current_frames // 2
                     if new_limit >= 10:
                         logger.warning(f"Doubao: token limit exceeded, reducing {current_frames} → {new_limit} frames")
-                        reduced = _subsample_parts(parts, new_limit)
+                        if _has_views:
+                            reduced = _subsample_multiview_parts(parts, new_limit)
+                        else:
+                            reduced = _subsample_parts(parts, new_limit)
                         user_content = []
                         if system_prompt:
                             user_content.append({"type": "input_text", "text": system_prompt.strip()})
                         for p in reduced:
-                            if p.get("type") == "image_url":
+                            if p.get("type") == "text":
+                                user_content.append({"type": "input_text", "text": p["text"]})
+                            elif p.get("type") == "image_url":
                                 user_content.append({"type": "input_image", "image_url": p["image_url"]["url"]})
                         user_content.append({"type": "input_text", "text": user_prompt})
                         body["input"][0]["content"] = user_content
-                        parts = reduced  # update for next potential reduction
+                        parts = reduced
                         continue
                 raise Exception(f"HTTP {resp.status_code}: {err_text}")
             data = resp.json()
 
-            # Check for API-level error
             if data.get("error"):
                 raise Exception(f"API error: {data['error'].get('message', '')}")
 
-            # Extract text from Responses API output format
             content = ""
-            for item in data.get("output", []):
-                if item.get("type") == "message":
-                    for c in item.get("content", []):
-                        if c.get("type") == "output_text":
-                            content += c.get("text", "")
+            if use_video_mode:
+                # Chat Completions response format
+                choices = data.get("choices", [])
+                if choices:
+                    msg = choices[0].get("message", {})
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        content = "".join(p.get("text", "") for p in content if p.get("type") == "text")
+            else:
+                # Responses API output format
+                for item in data.get("output", []):
+                    if item.get("type") == "message":
+                        for c in item.get("content", []):
+                            if c.get("type") == "output_text":
+                                content += c.get("text", "")
 
             usage = data.get("usage", {})
             return content.strip(), {
-                "prompt_tokens": usage.get("input_tokens", 0),
-                "completion_tokens": usage.get("output_tokens", 0),
-                "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+                "prompt_tokens": usage.get("input_tokens", usage.get("prompt_tokens", 0)),
+                "completion_tokens": usage.get("output_tokens", usage.get("completion_tokens", 0)),
+                "total_tokens": usage.get("total_tokens",
+                    usage.get("input_tokens", usage.get("prompt_tokens", 0))
+                    + usage.get("output_tokens", usage.get("completion_tokens", 0))),
             }
         except Exception as e:
             err = str(e)
             is_rate = "429" in err or "rate" in err.lower()
             wait = min(2 ** attempt, 30) if is_rate else 2
-            logger.warning(f"Doubao Responses API error (attempt {attempt+1}): {err[:200]}")
+            logger.warning(f"Doubao API error (attempt {attempt+1}): {err[:200]}")
             time.sleep(wait)
     return "", {}
 
@@ -845,18 +896,24 @@ def _call_gpt_responses_api(
 def _call_vqa_api(
     client, image_parts: List[Dict], system_prompt: str, user_prompt: str,
     model: str, thinking: bool = True, max_retries: int = 5,
+    video_urls: List[str] = None, input_type: str = "image", fps: float = 2.0,
 ) -> Tuple[str, Dict]:
     """Call VLM API with optional thinking/reasoning control.
 
     Args:
         thinking: if True, enable thinking/reasoning for supported models;
                   if False, call without any thinking config (faster).
+        video_urls: optional list of video URLs for models that support video_url type.
     """
     import httpx
 
     # Gemini native models use their own protocol
     if _is_gemini_native_model(model):
-        body = _build_gemini_native_request_body(model, image_parts, system_prompt, user_prompt)
+        _gem_video = video_urls if input_type == "video" else None
+        body = _build_gemini_native_request_body(
+            model, image_parts, system_prompt, user_prompt,
+            video_urls=_gem_video, fps=fps,
+        )
         if not thinking:
             body.pop("generationConfig", None)  # remove thinkingConfig
 
@@ -909,6 +966,7 @@ def _call_vqa_api(
         return _call_doubao_responses_api(
             client, image_parts, system_prompt, user_prompt,
             model=model, thinking=thinking, max_retries=max_retries,
+            video_urls=video_urls,
         )
 
     # OpenAI-compatible path (Qwen, GPT, non-native Gemini)
@@ -935,7 +993,18 @@ def _call_vqa_api(
         first_url = image_parts[0].get("image_url", {}).get("url", "")
         _is_oss = first_url.startswith("http")
 
-    if _is_qwen_model(model) and _has_view_labels:
+    if input_type == "video" and video_urls and _is_qwen_model(model):
+        combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
+        content = []
+        for vu in video_urls:
+            vpart: Dict[str, Any] = {"type": "video", "video": vu}
+            if fps is not None:
+                vpart["fps"] = fps
+            content.append(vpart)
+        content.append({"type": "text", "text": combined_text})
+        messages = [{"role": "user", "content": content}]
+        logger.info(f"Qwen: video URL mode, {len(video_urls)} video(s), fps={fps}")
+    elif _is_qwen_model(model) and _has_view_labels:
         # Multi-view with text labels: group frames per view into video blocks
         combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
         content = []
@@ -1027,21 +1096,30 @@ def process_sample(
     model: str,
     base_url: str = None,
     thinking: bool = True,
+    video_urls: List[str] = None,
+    input_type: str = "image",
+    fps: float = 2.0,
+    custom_model=None,
+    pil_frames: List = None,
 ) -> List[Dict]:
     """Process all questions for one sample in a single API call.
 
     Returns list of result dicts (one per question).
     """
-    client = _get_client(base_url=base_url)
-
     # Build batch prompt with all questions
     prompt, extras_by_qid = build_batch_prompt(qas)
 
     start = time.time()
-    response, usage = _call_vqa_api(
-        client, image_parts, SYSTEM_PROMPT, prompt,
-        model=model, thinking=thinking, max_retries=5,
-    )
+
+    if custom_model is not None and pil_frames is not None:
+        response, usage = custom_model.generate(pil_frames, prompt, SYSTEM_PROMPT)
+    else:
+        client = _get_client(base_url=base_url)
+        response, usage = _call_vqa_api(
+            client, image_parts, SYSTEM_PROMPT, prompt,
+            model=model, thinking=thinking, max_retries=5,
+            video_urls=video_urls, input_type=input_type, fps=fps,
+        )
     elapsed = time.time() - start
 
     # Parse JSON answers from response
@@ -1115,6 +1193,16 @@ def parse_args():
                    help="Enable thinking/reasoning mode (default: true)")
     p.add_argument("--round", type=int, default=None,
                    help="Round number for multi-round evaluation (affects output filename)")
+    p.add_argument("--input-type", default="image", choices=["image", "video"],
+                   help="Input mode: 'image' sends per-frame images; 'video' sends .mp4 URL directly (lower tokens)")
+    p.add_argument("--fps", type=float, default=2.0,
+                   help="FPS hint for video mode (only used when --input-type=video)")
+    p.add_argument("--model-class", default=None,
+                   help="Custom model class path, e.g. 'models.example_local_model.LocalVLMExample'")
+    p.add_argument("--model-path", default="",
+                   help="Path passed to custom model constructor (used with --model-class)")
+    p.add_argument("--frames-dir", default=None,
+                   help="Pre-extracted frames directory (used with --model-class)")
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
 
@@ -1155,13 +1243,6 @@ def main():
     samples = load_samples(args.input)
     logger.info(f"Loaded {len(samples)} samples")
 
-    # Auto-load VQA frame index if it exists (OSS URL mode)
-    vqa_frame_index = None
-    if os.path.exists(DEFAULT_VQA_FRAME_INDEX):
-        logger.info(f"Loading VQA frame index: {DEFAULT_VQA_FRAME_INDEX}")
-        vqa_frame_index = load_vqa_frame_index(DEFAULT_VQA_FRAME_INDEX)
-        logger.info(f"Loaded VQA frame index for {len(vqa_frame_index)} samples")
-
     # ── Build task list: (sample, question) pairs ──
     sample_ids = sorted(set(qa_map.keys()) & set(samples.keys()))
     end = args.end if args.end is not None else len(sample_ids)
@@ -1175,13 +1256,32 @@ def main():
                 "qa": qa,
             })
 
+    # ── Load custom model (if specified) ──
+    custom_model = None
+    if args.model_class:
+        module_path, class_name = args.model_class.rsplit(".", 1)
+        import importlib
+        mod = importlib.import_module(module_path)
+        cls = getattr(mod, class_name)
+        custom_model = cls(args.model_path)
+        logger.info(f"Loaded custom model: {args.model_class}({args.model_path})")
+        if not args.model or args.model == "qwen3-vl-plus":
+            args.model = args.model_class  # use class name as model tag
+
     # ── Summary ──
     type_counts = Counter(t["qa"]["answer_type"] for t in tasks)
     print(f"\n{'='*60}")
     print(f"  VQA Test: {len(tasks)} questions from {len(sample_ids)} samples")
     print(f"  Model: {args.model}")
     thinking = args.thinking == "true"
-    mode = "OSS URL" if vqa_frame_index else "video decode (base64)"
+    if custom_model:
+        mode = f"custom model (fps={args.fps})"
+        if args.frames_dir:
+            mode += f", frames_dir={args.frames_dir}"
+    elif args.input_type == "video":
+        mode = f"video URL (fps={args.fps})"
+    else:
+        mode = f"image list (fps={args.fps})"
     print(f"  Mode: {mode}")
     print(f"  Thinking: {thinking}")
     for t, c in type_counts.most_common():
@@ -1198,10 +1298,13 @@ def main():
     else:
         os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
         model_tag = args.model.replace("/", "_").replace(".", "_")
+        mode_tag = f"_{args.input_type}"
+        if args.input_type == "video":
+            mode_tag += f"_fps{args.fps:g}"
         if args.round is not None:
-            output_path = os.path.join(DEFAULT_OUTPUT_DIR, f"{model_tag}_round{args.round}_vqa_result.jsonl")
+            output_path = os.path.join(DEFAULT_OUTPUT_DIR, f"{model_tag}{mode_tag}_round{args.round}_vqa_result.jsonl")
         else:
-            output_path = os.path.join(DEFAULT_OUTPUT_DIR, f"{model_tag}_vqa_result.jsonl")
+            output_path = os.path.join(DEFAULT_OUTPUT_DIR, f"{model_tag}{mode_tag}_vqa_result.jsonl")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     logger.info(f"Output: {output_path}")
 
@@ -1247,12 +1350,46 @@ def main():
     def _process_one_sample(sid: str):
         """Load frames + call API for one sample, return list of result dicts."""
         sample = samples[sid]
-        parts, desc = get_multi_view_image_parts(sample, vqa_frame_index=vqa_frame_index)
-        if not parts:
-            parts, desc = get_image_parts(sample, vqa_frame_index=vqa_frame_index)
         sample_qas = [t["qa"] for t in tasks_by_sample[sid]]
 
-        if not parts:
+        # Custom model path: load PIL frames, call model.generate()
+        if custom_model is not None:
+            pil_frames, desc = _load_pil_frames(sample, fps=args.fps, frames_dir=args.frames_dir)
+            if not pil_frames:
+                return [{
+                    "question_id": qa["question_id"], "sample_id": sid,
+                    "answer_type": qa["answer_type"], "correct": False,
+                    "call_success": False, "error": "no frames for custom model",
+                } for qa in sample_qas], desc
+            results = process_sample(
+                sid, sample_qas, [],
+                model=args.model, thinking=thinking,
+                custom_model=custom_model, pil_frames=pil_frames,
+            )
+            return results, desc
+
+        # API model path
+        sample_video_urls = [u for u in sample.get("views", {}).values()
+                            if isinstance(u, str) and u.startswith("http")]
+
+        input_type = args.input_type
+
+        # Doubao: limit to 1 video (primary view) to avoid 413 Request Entity Too Large
+        if input_type == "video" and sample_video_urls and _is_doubao_model(args.model):
+            sample_video_urls = sample_video_urls[:1]
+
+        if input_type == "video" and sample_video_urls:
+            parts = []
+            desc = f"video({len(sample_video_urls)} urls, fps={args.fps})"
+        else:
+            if input_type == "video":
+                logger.warning(f"  {sid}: no video URLs found, falling back to image mode")
+            parts, desc = get_multi_view_image_parts(sample, fps=args.fps)
+            if not parts:
+                parts, desc = get_image_parts(sample, fps=args.fps)
+            input_type = "image"
+
+        if not parts and not sample_video_urls:
             return [{
                 "question_id": qa["question_id"], "sample_id": sid,
                 "answer_type": qa["answer_type"], "correct": False,
@@ -1263,6 +1400,8 @@ def main():
             sid, sample_qas, parts,
             model=args.model, base_url=args.base_url,
             thinking=thinking,
+            video_urls=sample_video_urls or None,
+            input_type=input_type, fps=args.fps,
         )
         return results, desc
 

@@ -42,7 +42,7 @@ def normalize_evalsets(evalsets_path: str) -> list[dict]:
             })
             continue
 
-        if isinstance(gt_raw, str) and gt_raw.strip() == "错误（黑屏）":
+        if isinstance(gt_raw, str) and gt_raw.strip() == "error (black screen)":
             results.append({
                 "sample_id": sid,
                 "status": "skip_black_screen_gt",

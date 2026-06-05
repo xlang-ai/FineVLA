@@ -184,11 +184,7 @@ bash RoboFine-Bench/caption_eval/run_direct_align.sh hard
 ```
 RoboFine-Bench/
 ├── benchmark_overview.png             # Benchmark overview figure
-├── prepare_frames.py                  # Pre-extract video frames for offline use
-├── models/                            # Model interface for custom models
-│   ├── base_model.py                  # BaseVLM abstract class
-│   ├── api_model.py                   # Built-in OpenAI-compatible implementation
-│   └── example_local_model.py         # Example: local HuggingFace model
+├── prepare_frames.py                  # Pre-extract video frames to images
 ├── eval_set/
 │   └── prepare_evalsets_input.py      # Data preparation (internal use)
 ├── vqa_eval/
@@ -197,7 +193,8 @@ RoboFine-Bench/
 │   ├── vqa_config.py                  # Dataset view/FPS configuration
 │   ├── vqa_prompts.py                 # VQA prompt templates
 │   ├── vqa_report.py                  # Score reporting & CSV
-│   └── run_vqa_eval.sh               # Batch multi-round evaluation
+│   ├── run_vqa_eval.sh               # Batch multi-round evaluation
+│   └── run_video_eval.sh             # Video mode evaluation (3 models)
 └── caption_eval/
     ├── annotate/
     │   ├── run_annotate.py            # Caption generation runner
@@ -226,49 +223,156 @@ The evaluation scripts support multiple VLM providers out of the box:
 | OpenAI | `openai.gpt-5.4-2026-03-05` |
 | Doubao | `doubao.doubao-seed-2-0-pro-260215` |
 
-## 7. Evaluate Your Own Model
+## 7. DashScope API: Video Input Modes
 
-To evaluate a custom model (local HuggingFace model, vLLM server, etc.), implement the `BaseVLM` interface:
+> **Note:** This section documents DashScope-specific calling conventions for each model.
 
-### Step 1: Pre-extract frames
+### Two Input Modes
+
+| | Image List Mode | Video URL Mode |
+|--|----------------|---------------|
+| **How it works** | Client decodes video → sample frames at target FPS → base64 encode → send as per-frame image | Send .mp4 URL directly → model handles frame sampling internally |
+| **Pros** | Full control over FPS, frame count, resolution | Extremely low token cost, no client-side decoding |
+| **Cons** | High token cost (each frame tokenized independently) | FPS control depends on model/API support |
+| **Prompt Tokens** | ~20K–86K per sample | ~700–2K per sample |
+
+### Model Support Matrix
+
+| Model | Image List | Video URL | Video Format | FPS Control | Approx Tokens (video) |
+|-------|:---------:|:---------:|--------------|:-----------:|:---------------------:|
+| **qwen3-vl-plus** | ✅ | ✅ | `{"type":"video", "video":"url.mp4", "fps":2.0}` | ✅ | TBD |
+| **qwen3.5-plus** | ✅ | ✅ | Same as above | ✅ | TBD |
+| **doubao-seed** | ✅ | ✅ | `{"type":"video_url"}` (model name + `-completion` suffix) | ✅ | ~1,918 |
+| **gemini-3.1-pro** | ✅ | ✅ | Native `contents` + `fileData` (mimeType=video/mp4) | ✅ `videoMetadata.fps` | ~693 (1fps) |
+| **gpt-5.4** | ✅ | ❌ | Requires `file_id` (no upload API via DashScope) | Client-side | N/A |
+
+### Frame Limits (Image List Mode)
+
+| Model | Max Frames | Reason |
+|-------|-----------|--------|
+| doubao-seed | 100 | Token limit ~128K |
+| gpt-5.4 | 490 | API limit: 500 images/request |
+| qwen / gemini | No hard limit | Video URL mode: model decides |
+
+### Calling Conventions
+
+**Qwen (Video URL):**
+```json
+{"type": "video", "video": "https://xxx.mp4", "fps": 2.0}
+```
+
+**Doubao (Video URL):**
+- Model name must have `-completion` suffix: `doubao-seed-2-0-pro-260215-completion`
+- Uses standard `messages` format with `video_url` type:
+```json
+{"type": "video_url", "video_url": {"url": "https://xxx.mp4"}}
+```
+
+**Gemini (Video URL):**
+- Must use native `contents`/`fileData` format (NOT `messages` format)
+- Supports FPS control via `videoMetadata.fps` (default: 1 fps)
+```json
+{"contents": [{"parts": [{"fileData": {"mimeType": "video/mp4", "fileUri": "https://xxx.mp4"}, "videoMetadata": {"fps": 2.0}}, {"text": "..."}], "role": "user"}]}
+```
+
+**GPT-5.4 (Image List only):**
+- Only supports `image_url` type (per-frame images)
+- `video_url` and `file` type both require pre-uploaded `file_id`, which DashScope does not provide
+
+### Token Cost Comparison (same video, single sample)
+
+| Mode | doubao-seed | gemini-3.1-pro | gpt-5.4 |
+|------|:-----------:|:--------------:|:-------:|
+| Image List | ~85,900 | ~5,000 | ~20,000 |
+| Video URL (0.5 fps) | — | **315** | N/A |
+| Video URL (1 fps) | — | **693** | N/A |
+| Video URL (2 fps) | **1,918** | **1,323** | N/A |
+
+## 8. Evaluate Your Own Model
+
+### Custom Model
+
+To evaluate your own VLM, implement the `BaseVLM` interface and pass it via `--model-class`:
+
+```python
+# my_model.py
+from models.base_model import BaseVLM
+from PIL import Image
+from typing import Dict, List, Tuple
+
+class MyVLM(BaseVLM):
+    def __init__(self, model_path: str):
+        # Load your model weights
+        self.model = load_my_model(model_path)
+
+    def generate(self, images: List[Image.Image], prompt: str, system_prompt: str = "") -> Tuple[str, Dict]:
+        # images: video frames sampled at target FPS, ordered chronologically
+        # Return (response_text, token_usage_dict)
+        output = self.model.inference(images, prompt)
+        return output, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+```
+
+Run evaluation:
 
 ```bash
-python prepare_frames.py \
-    --evalsets EvalData/EvalSets.json \
-    --video-dir EvalData/Videos \
-    --output-dir EvalData/frames \
-    --fps 2.0
+# Evaluate custom model (downloads videos and decodes at 2 fps)
+python vqa_eval/run_vqa.py \
+    --model-class my_model.MyVLM \
+    --model-path /path/to/weights \
+    --fps 2 \
+    --num-workers 4
+
+# Use pre-extracted frames (faster, no download needed)
+python prepare_frames.py --input EvalData/EvalSets.json --output frames/ --fps 2
+python vqa_eval/run_vqa.py \
+    --model-class my_model.MyVLM \
+    --model-path /path/to/weights \
+    --frames-dir frames/ \
+    --num-workers 4
 ```
 
-### Step 2: Implement BaseVLM
+| Argument | Description |
+|----------|-------------|
+| `--model-class` | Python import path to your model class (e.g., `my_model.MyVLM`) |
+| `--model-path` | Path passed to the model constructor (weights, config, etc.) |
+| `--frames-dir` | Optional: pre-extracted frames directory (skips video download/decode) |
 
-```python
-from models.base_model import BaseVLM
+### Input Modes
 
-class MyModel(BaseVLM):
-    def __init__(self, model_path):
-        # Load your model
-        ...
+Both VQA and Caption evaluation support two input modes:
 
-    def generate(self, images, prompt, system_prompt=""):
-        # images: list of PIL.Image (video frames at 2 FPS)
-        # Return: (response_text, token_usage_dict)
-        ...
-        return response, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-```
+| | Video Mode | Image List Mode |
+|--|-----------|----------------|
+| **How** | Send `.mp4` URL directly to the model | Client decodes video at target FPS, sends frames as image list |
+| **Pros** | Low token cost, no client-side decoding | Works with any model, full control over frames |
+| **Cons** | Requires model to accept video input | Higher token cost (each frame tokenized independently) |
 
-See `models/example_local_model.py` for a complete example.
+**Default FPS settings:**
 
-### Step 3: Run evaluation
+| Track | FPS | Rationale |
+|-------|-----|-----------|
+| **VQA** | 2 | Coarse temporal understanding suffices for most questions |
+| **Caption** | 4 | Finer temporal resolution needed for step-level action description |
 
-Use your model with the built-in evaluation scripts, or write a simple loop:
+### API Models
 
-```python
-from models import APIModel  # or your custom model
-from vqa_eval.vqa_eval import evaluate_answer
+Use `--input-type` to select the mode for supported API models:
 
-model = APIModel("qwen3-vl-plus")  # or MyModel("path/to/model")
-response, tokens = model.generate(frames, prompt, system_prompt)
+```bash
+# VQA — Video mode (recommended, lower tokens)
+python vqa_eval/run_vqa.py \
+    --model qwen3-vl-plus \
+    --input-type video --fps 2 \
+    --num-workers 16
+
+# VQA — Image list mode (fallback for models without video support)
+python vqa_eval/run_vqa.py \
+    --model openai.gpt-5.4-2026-03-05 \
+    --input-type image \
+    --num-workers 16
+
+# Batch evaluation (3 models, video mode)
+nohup bash vqa_eval/run_video_eval.sh --workers 16 > logs/video_eval.log 2>&1 &
 ```
 
 ## Data
