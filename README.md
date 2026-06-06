@@ -19,7 +19,7 @@
   <a href="https://arxiv.org/abs/2605.27284"><img src="https://img.shields.io/badge/arXiv-Paper-red?style=for-the-badge" alt="Paper"></a>
   <a href="https://huggingface.co/xlangai/RoboFine-VLM-397B-A17B"><img src="https://img.shields.io/badge/HuggingFace-Models-orange?style=for-the-badge&logo=huggingface" alt="Models"></a>
   <a href="https://huggingface.co/datasets/xlangai/RoboFine-bench"><img src="https://img.shields.io/badge/HuggingFace-Benchmark-yellow?style=for-the-badge&logo=huggingface" alt="Benchmark"></a>
-  <a href="FineVLA-Policy/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green?style=for-the-badge" alt="License"></a>
 </p>
 
 ## Updates
@@ -201,9 +201,9 @@ FineVLA-Policy is built on [StarVLA](https://github.com/starVLA/starVLA). We als
 
 ## License
 
-This project is released under the [MIT License](FineVLA-Policy/LICENSE).
+This project is released under the [Apache License 2.0](LICENSE).
 
-- **Code, tools, and pipeline:** MIT License
+- **Code, tools, and pipeline:** Apache License 2.0
 - **Benchmark data:** Available on [HuggingFace](https://huggingface.co/datasets/xlangai/RoboFine-bench)
 
 ## Disclaimer
