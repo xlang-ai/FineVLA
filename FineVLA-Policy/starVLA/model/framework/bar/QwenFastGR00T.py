@@ -141,7 +141,7 @@ class QwenFastGR00T(baseframework):
         # Step 2: Create encoder_attention_mask based
         # last_hidden_state: [B, seq_len, H]
         last_hidden = qwenvl_outputs.hidden_states[-1]   # [B, L, H]
-        # index label = -100 的token embedding set
+        # index token embeddings where label = -100
         # Create encoder_attention_mask based # TODO may be we should mask more tokens?
         encoder_attention_mask = (qwen_inputs.labels == -100).to(dtype=torch.float32)  # -100 -> 1, others -> 0
 
@@ -191,7 +191,7 @@ class QwenFastGR00T(baseframework):
         """
         if type(examples) is not list:
             examples = [examples]
-        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B，[PLT]]
+        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
         
@@ -324,7 +324,7 @@ if __name__ == "__main__":
 
 
     # # test with dataloader
-    # # can be fake sample， but here get from dataloader for simpler
+    # # can be fake sample, but here get from dataloader for simpler
     from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
 
     vla_dataset_cfg = cfg.datasets.vla_data

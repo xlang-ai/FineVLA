@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-VLA 轨迹 Action/State 相似度分析与聚类 —— 主入口。
+VLA Trajectory Action/State Similarity Analysis and Clustering -- Main Entry Point.
 
-支持两种运行模式：
-  1. 单数据集模式：指定 --dataset_root 分析单个数据集
-  2. Config 模式：指定 --dataset_name 从 config.py 读取配置
+Supports two running modes:
+  1. Single dataset mode: specify --dataset_root to analyze a single dataset
+  2. Config mode: specify --dataset_name to load configuration from config.py
 
-用法示例:
-    # 使用 config 配置（推荐）
+Usage examples:
+    # Use config (recommended)
     python run_analysis.py --dataset_name Galaxea --side right
 
-    # 单子数据集
+    # Single sub-dataset
     python run_analysis.py \
         --dataset_name RDT \
         --dataset_root $VLA_DATA_ROOT/RDT-yhq/airpods_on_second_layer \
@@ -18,17 +18,17 @@ VLA 轨迹 Action/State 相似度分析与聚类 —— 主入口。
         --recursive --max_depth 2 --min_cluster_size 3 \
         --output_dir ./results_test
 
-    # 从缓存加载
+    # Load from cache
     python run_analysis.py \\
         --dataset_name Galaxea \\
         --dataset_root /path/to/dataset \\
         --load_cache ./results/distance_matrix.npz
 
-    # 测试跑多个子数据集
+    # Test run on multiple sub-datasets
     cd ClusteringAndSampling/
 
-       
-    
+
+
 """
 
 import argparse
@@ -62,69 +62,69 @@ def parse_args():
         description="VLA trajectory similarity analysis via DTW + clustering",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    # 数据
+    # Data
     p.add_argument("--dataset_name", type=str, default=None,
-                   help="数据集名称（从 config.py 读取配置）")
+                   help="Dataset name (loads config from config.py)")
     p.add_argument("--dataset_root", type=str, default=None,
-                   help="数据集根目录（覆盖 config 中的 dataset_path）")
+                   help="Dataset root directory (overrides dataset_path in config)")
     p.add_argument("--side", type=str, default=None,
-                   help="分析哪只手臂 (default: 使用 config 中的第一个)")
+                   help="Which arm side to analyze (default: use the first one in config)")
     p.add_argument("--max_episodes", type=int, default=None,
-                   help="最多加载几条轨迹（用于快速调试）")
+                   help="Max number of trajectories to load (for quick debugging)")
 
-    # DTW 参数（覆盖 config 默认值）
+    # DTW parameters (override config defaults)
     p.add_argument("--w_pos", type=float, default=None,
-                   help="位置距离权重")
+                   help="Position distance weight")
     p.add_argument("--w_rot", type=float, default=None,
-                   help="姿态距离权重")
+                   help="Orientation distance weight")
     p.add_argument("--w_grip", type=float, default=None,
-                   help="夹爪距离权重")
+                   help="Gripper distance weight")
     p.add_argument("--normalize", action="store_true", default=None,
-                   help="DTW 距离按路径长度归一化")
+                   help="Normalize DTW distance by path length")
     p.add_argument("--no_normalize", action="store_true",
-                   help="不做 DTW 距离归一化")
+                   help="Disable DTW distance normalization")
     p.add_argument("--window", type=int, default=None,
-                   help="Sakoe-Chiba 窗口大小（None=无约束）")
+                   help="Sakoe-Chiba window size (None=unconstrained)")
     p.add_argument("--n_jobs", type=int, default=None,
-                   help="并行进程数")
+                   help="Number of parallel processes")
 
-    # 聚类
+    # Clustering
     p.add_argument("--n_clusters", type=int, default=None,
-                   help="聚类数（0=自动选择最佳 k）")
+                   help="Number of clusters (0=auto-select best k)")
     p.add_argument("--cluster_method", type=str, default="both",
                    choices=["hierarchical", "kmedoids", "both"],
-                   help="聚类方法 (default: both)")
+                   help="Clustering method (default: both)")
     p.add_argument("--linkage_method", type=str, default="average",
                    choices=["average", "complete", "single", "ward"],
-                   help="层次聚类 linkage 方法 (default: average)")
+                   help="Hierarchical clustering linkage method (default: average)")
 
-    # 递归聚类
+    # Recursive clustering
     p.add_argument("--recursive", action="store_true",
-                   help="启用递归聚类（先分大簇，再在簇内继续划分）")
+                   help="Enable recursive clustering (split into large clusters first, then subdivide)")
     p.add_argument("--max_depth", type=int, default=3,
-                   help="递归最大深度 (default: 3)")
+                   help="Maximum recursion depth (default: 3)")
     p.add_argument("--min_cluster_size", type=int, default=5,
-                   help="递归终止的最小簇大小 (default: 5)")
+                   help="Minimum cluster size to stop recursion (default: 5)")
     p.add_argument("--min_rel_gap", type=float, default=None,
-                   help="子层级 auto-k 的最小 rel_gap 阈值（默认使用 config 中的值）")
+                   help="Minimum rel_gap threshold for sub-level auto-k (default: use config value)")
 
-    # 输出
+    # Output
     p.add_argument("--output_dir", type=str, default=None,
-                   help="结果输出目录（默认自动生成）")
+                   help="Output directory for results (default: auto-generated)")
     p.add_argument("--load_cache", type=str, default=None,
-                   help="从 .npz 缓存文件加载已计算的距离矩阵")
+                   help="Load pre-computed distance matrix from .npz cache file")
 
-    # 数据过滤
+    # Data filtering
     p.add_argument("--filter_report_path", type=str, default=None,
-                   help="filter_report.json 路径，排除问题 episodes")
+                   help="Path to filter_report.json to exclude problematic episodes")
     p.add_argument("--sub_dataset", type=str, default=None,
-                   help="子数据集名称（用于匹配 filter_report 中的 key）")
+                   help="Sub-dataset name (for matching keys in filter_report)")
 
     return p.parse_args()
 
 
 def _resolve_config(args) -> DatasetConfig:
-    """根据命令行参数构建/合并配置。"""
+    """Build/merge configuration based on command-line arguments."""
     if args.dataset_name:
         cfg = get_config(args.dataset_name)
     else:
@@ -155,7 +155,7 @@ def _resolve_config(args) -> DatasetConfig:
 
 
 def _compute_single_side(dataset_root, cfg, side, args, exclude_episodes=None, robot_type=None):
-    """计算单侧手臂的 DTW 距离矩阵。返回 (dist_matrix, episode_ids, elapsed) 或 (None, ids, 0)。"""
+    """Compute single-arm DTW distance matrix. Returns (dist_matrix, episode_ids, elapsed) or (None, ids, 0)."""
     trajectories = load_trajectories(
         dataset_root, config=cfg, side=side, max_episodes=args.max_episodes,
         exclude_episodes=exclude_episodes, robot_type=robot_type,
@@ -197,10 +197,10 @@ def run_single(
     output_dir: str,
     args,
 ):
-    """对单个（子）数据集执行完整分析流程。"""
+    """Run the full analysis pipeline on a single (sub-)dataset."""
     os.makedirs(output_dir, exist_ok=True)
 
-    # ── 加载 filter_report（如果有）──
+    # ── Load filter_report (if available) ──
     exclude_episodes = None
     if args.filter_report_path or cfg.filter_report_path:
         filter_path = args.filter_report_path or cfg.filter_report_path
@@ -208,7 +208,7 @@ def run_single(
             print(f"\n[0/4] Loading filter_report from: {filter_path}")
             problem_map = load_filter_report(filter_path)
 
-            # 匹配子数据集名称
+            # Match sub-dataset name
             if args.sub_dataset:
                 sub_name = args.sub_dataset
             else:
@@ -216,17 +216,17 @@ def run_single(
 
             if sub_name in problem_map:
                 exclude_episodes = problem_map[sub_name]
-                print(f"  ✓ 从 filter_report 排除 {len(exclude_episodes)} 个问题 episodes")
+                print(f"  -> Excluded {len(exclude_episodes)} problematic episodes from filter_report")
             else:
-                print(f"  → 未在 filter_report 中找到子数据集 '{sub_name}'")
+                print(f"  -> Sub-dataset '{sub_name}' not found in filter_report")
 
-    # 推断 robot_type（用于 RoboMindV2.0 动态配置加载）
+    # Infer robot_type (for RoboMindV2.0 dynamic config loading)
     robot_type = None
     if cfg.has_modality_json and cfg.sub_dataset_depth >= 2:
         robot_type = infer_robot_type_from_path(dataset_root, cfg.dataset_path)
-        print(f"  ✓ 推断 robot_type: {robot_type}")
+        print(f"  -> Inferred robot_type: {robot_type}")
 
-    # ── 1 & 2. 加载轨迹 + DTW 距离矩阵 ──
+    # ── 1 & 2. Load trajectories + DTW distance matrix ──
     print(f"\n[1/4] Loading trajectories from: {dataset_root}")
     print(f"  config: {cfg.dataset_name}, rot_type={cfg.rot_type}, side={side}")
 
@@ -288,12 +288,12 @@ def run_single(
         np.savez(cache_path, dist_matrix=dist_matrix, episode_ids=np.array(episode_ids))
         print(f"  -> Cached (npz) to {cache_path}")
 
-    # 距离统计
+    # Distance statistics
     upper = dist_matrix[np.triu_indices_from(dist_matrix, k=1)]
     print(f"  Distance stats ({N} traj): min={upper.min():.4f}, max={upper.max():.4f}, "
           f"mean={upper.mean():.4f}, std={upper.std():.4f}")
 
-    # 保存距离矩阵 JSON
+    # Save distance matrix JSON
     if not args.load_cache:
         dm_json = {
             "dataset_name": cfg.dataset_name,
@@ -321,7 +321,7 @@ def run_single(
             json.dump(dm_json, f, indent=2)
         print(f"  -> Saved (json) to {dm_json_path}")
 
-    # ── 3. 聚类 ──
+    # ── 3. Clustering ──
     n_clusters = cfg.n_clusters
     if n_clusters > 0:
         n_clusters = min(n_clusters, N)
@@ -354,7 +354,7 @@ def run_single(
         return clusters
 
     if getattr(args, "recursive", False):
-        # ── 递归聚类模式 ──
+        # ── Recursive clustering mode ──
         min_rel_gap = args.min_rel_gap if args.min_rel_gap is not None else cfg.min_rel_gap
         print(f"\n[3/4] Recursive clustering (linkage={args.linkage_method}, "
               f"max_depth={args.max_depth}, min_size={args.min_cluster_size}, "
@@ -396,11 +396,11 @@ def run_single(
             print(f"    [{p}] {len(leaf_clusters[p])} episodes: "
                   f"{leaf_clusters[p][:10]}{'...' if len(leaf_clusters[p]) > 10 else ''}")
 
-        # 可视化用 leaf labels
+        # Leaf labels for visualization
         linkage_mat = None
         hier_labels = None
     else:
-        # ── 原始单层聚类模式 ──
+        # ── Original flat clustering mode ──
         print(f"\n[3/4] Clustering (k={'auto' if use_k is None else use_k})")
 
         hier_labels, linkage_mat = None, None
@@ -448,7 +448,7 @@ def run_single(
                 "clusters": _build_cluster_detail(kmed_labels, episode_ids, medoid_indices),
             }
 
-    # ── 4. 可视化 ──
+    # ── 4. Visualization ──
     print(f"\n[4/4] Generating visualizations -> {output_dir}")
 
     plot_distance_heatmap(

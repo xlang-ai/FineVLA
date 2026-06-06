@@ -65,7 +65,7 @@ class Qwen_Dual(baseframework):
         # align dims --> we should put them to config or no?
         self.config.framework.action_model.diffusion_model_cfg.cross_attention_dim = self.qwen_vl_interface.model.config.hidden_size
 
-        self.action_model: FlowmatchingActionHead = get_action_model(config=self.config)  # 修复后续引用
+        self.action_model: FlowmatchingActionHead = get_action_model(config=self.config)  # fix subsequent type references
 
         self.dino_encoder = get_dino_model(
             backone_name=getattr(self.config.framework.dino, "dino_backbone", "dinov2_vits14")
@@ -85,7 +85,7 @@ class Qwen_Dual(baseframework):
         **kwargs,
     ) -> Tuple:
         """
-        训练前向：直接回归未来动作（无扩散）。
+        Training forward: directly regress future actions (no diffusion).
 
         Flow:
           1. Build QwenVL inputs (images + instruction tokens)
@@ -135,7 +135,7 @@ class Qwen_Dual(baseframework):
         **kwargs: str,
     ) -> np.ndarray:
         """
-        推理：单次前向直接回归未来动作（无扩散采样）。
+        Inference: single forward pass to directly regress future actions (no diffusion sampling).
 
         Steps:
           1. Resize images to training resolution (if specified)
@@ -156,8 +156,8 @@ class Qwen_Dual(baseframework):
     
     def align_model_input(self, examples: List[dict]):
 
-        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B，[PLT]]
-        wrist_views = [to_pil_preserve(example["wrist_views"]) for example in examples] if "wrist_views" in examples[0] else None #  [B，[PLT]]
+        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B, [PLT]]
+        wrist_views = [to_pil_preserve(example["wrist_views"]) for example in examples] if "wrist_views" in examples[0] else None #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
   
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     print(f"Unnormalized Action: {normalized_actions}")
 
     # # Advance: try forward model with dataloader
-    # # can be fake sample， but here get from dataloader for simpler
+    # # can be fake sample, but here get from dataloader for simpler
     from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
 
     vla_dataset_cfg = cfg.datasets.vla_data

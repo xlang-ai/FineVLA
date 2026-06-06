@@ -35,7 +35,7 @@ CUDA_VISIBLE_DEVICES=$gpu_id ${starVLA_python} deployment/model_server/server_po
     --use_bf16 &
 
 
-# 获取服务的 PID
+# Get the server PID
 server_pid=$!
 
 
@@ -63,7 +63,7 @@ echo "Evaluation completed. Videos saved to ${video_out_path}, logs saved to ${l
 
 
 
-# 结束的时候要 kill 掉 base_port 的程序
+# Kill the process on base_port when finished
 if [ -n "$server_pid" ]; then
     echo "Killing server process with PID: $server_pid"
     kill $server_pid

@@ -11,7 +11,7 @@ from multiprocessing import Pool, cpu_count
 
 DATA_ROOT = "/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt"
 MIX_NAME = "aloha_multi_mix"
-NUM_WORKERS = 4  # 减少 worker 避免 Too many open files
+NUM_WORKERS = 4  # reduce workers to avoid Too many open files
 
 
 def compute_one(args):

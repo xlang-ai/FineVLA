@@ -23,5 +23,6 @@ outputs/
 _tests/
 EvalData/
 RoboFine-Bench/vqa_eval/results/
+RoboFine-Bench/caption_eval/annotate/results/
 外部api模型调用示例.md
 外部api模型接入列表.csv

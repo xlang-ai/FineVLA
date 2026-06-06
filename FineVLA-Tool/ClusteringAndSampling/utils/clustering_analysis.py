@@ -1,6 +1,6 @@
 """
-基于 DTW 距离矩阵的轨迹聚类与可视化。
-支持层次聚类、K-Medoids，以及多种可视化方式。
+Trajectory clustering and visualization based on DTW distance matrices.
+Supports hierarchical clustering, K-Medoids, and multiple visualization methods.
 """
 
 import os
@@ -15,7 +15,7 @@ from scipy.spatial.distance import squareform
 from sklearn.manifold import MDS
 
 
-# ──────────────────────── 自动选 k ────────────────────────
+# ──────────────────────── Auto-select k ────────────────────────
 
 def auto_select_k(
     linkage_matrix: np.ndarray,
@@ -23,29 +23,30 @@ def auto_select_k(
     min_k: int = 2,
 ) -> tuple[int, dict]:
     """
-    基于 dendrogram 合并高度的跳跃自动选择最佳 k。
+    Automatically select the best k based on merge-height jumps in the dendrogram.
 
-    定义
-    ----
+    Definitions
+    -----------
     merge_height(k) = Z[N-k, 2]
-        把 k 个簇合并为 k-1 个所需的距离。
+        The distance required to merge k clusters into k-1.
 
     abs_gap(k)  = merge_height(k) - merge_height(k+1)
-        "从 k 合并到 k-1 比从 k+1 合并到 k 贵多少"，越大说明 k 是好的分界。
+        "How much more expensive merging from k to k-1 is than from k+1 to k".
+        Larger values indicate k is a good boundary.
 
     rel_gap(k)  = abs_gap(k) / merge_height(k+1)     (> 0)
-        归一化到合并尺度，使不同量纲的数据集可比较。
+        Normalized to merge scale, making datasets with different units comparable.
 
-    选 k 策略
-    ---------
-    1. 计算每个 k 的 abs_gap 和 rel_gap
-    2. 对 rel_gap 排序，选最大的 rel_gap 对应的 k
-    3. 置信度 = best_rel_gap / second_rel_gap（>= 2 视为高置信）
+    k Selection Strategy
+    --------------------
+    1. Compute abs_gap and rel_gap for each k
+    2. Sort by rel_gap, select k with the largest rel_gap
+    3. Confidence = best_rel_gap / second_rel_gap (>= 2 considered high confidence)
 
     Returns
     -------
-    best_k : 推荐的 cluster 数
-    info : 诊断信息
+    best_k : recommended number of clusters
+    info : diagnostic information
     """
     N = linkage_matrix.shape[0] + 1
     max_k = min(max_k, N - 1)
@@ -54,7 +55,7 @@ def auto_select_k(
 
     merge_dists = linkage_matrix[:, 2]
 
-    # merge_height(k) = 把 k 个簇合并到 k-1 个的代价
+    # merge_height(k) = cost of merging k clusters into k-1
     merge_heights = {}
     for k in range(min_k, max_k + 1):
         idx = N - k
@@ -75,7 +76,7 @@ def auto_select_k(
     if not rel_gaps:
         return min_k, {"note": "cannot compute gaps"}
 
-    # 按 rel_gap 排序选 best_k
+    # Sort by rel_gap to select best_k
     ranked = sorted(rel_gaps.items(), key=lambda x: x[1], reverse=True)
     best_k = ranked[0][0]
     best_rel = ranked[0][1]
@@ -95,10 +96,10 @@ def auto_select_k(
     return best_k, info
 
 
-# ──────────────────────── 聚类方法 ────────────────────────
+# ──────────────────────── Clustering Methods ────────────────────────
 
 def _build_linkage(dist_matrix: np.ndarray, method: str) -> np.ndarray:
-    """构建 linkage 矩阵。"""
+    """Build linkage matrix."""
     condensed = squareform(dist_matrix, checks=False)
     if method == "ward":
         mds = MDS(n_components=min(10, len(dist_matrix) - 1),
@@ -116,19 +117,19 @@ def hierarchical_clustering(
     max_k: int = 10,
 ) -> tuple[np.ndarray, np.ndarray, int, dict]:
     """
-    层次聚类，支持自动选 k。
+    Hierarchical clustering with auto-k support.
 
     Parameters
     ----------
-    n_clusters : 指定 cluster 数。None 时自动选择。
-    max_k : 自动选 k 时的搜索上限
+    n_clusters : number of clusters. None for auto-selection.
+    max_k : upper bound for auto-k search
 
     Returns
     -------
-    labels : (N,) 聚类标签
+    labels : (N,) cluster labels
     linkage_matrix : scipy linkage matrix
-    actual_k : 实际使用的 cluster 数
-    auto_info : 自动选 k 的诊断信息（n_clusters=None 时有意义）
+    actual_k : actual number of clusters used
+    auto_info : auto-k diagnostic information (meaningful when n_clusters=None)
     """
     Z = _build_linkage(dist_matrix, method)
 
@@ -144,14 +145,14 @@ def hierarchical_clustering(
             print(f"    rel_gaps:  {auto_info['rel_gaps']}")
             print(f"    ranked_k:  {auto_info['ranked_k']}")
         if not confident:
-            print(f"    [WARN] 最大 rel_gap 仅为第二大的 "
-                  f"{auto_info.get('confidence_ratio', '?')}x，分界不明显")
+            print(f"    [WARN] Largest rel_gap is only "
+                  f"{auto_info.get('confidence_ratio', '?')}x of second largest, boundary is not clear")
 
     labels = fcluster(Z, t=n_clusters, criterion="maxclust")
     return labels, Z, n_clusters, auto_info
 
 
-# ──────────────────────── 递归聚类 ────────────────────────
+# ──────────────────────── Recursive Clustering ────────────────────────
 
 def recursive_clustering(
     dist_matrix: np.ndarray,
@@ -167,21 +168,21 @@ def recursive_clustering(
     _leaf_counter: list[int] | None = None,
 ) -> dict:
     """
-    递归聚类：先 auto-k 分大簇，再对每个簇内部继续 auto-k。
+    Recursive clustering: first auto-k to split into large clusters, then continue auto-k within each cluster.
 
-    解决 "大尺度差异淹没小尺度差异" 的问题：
-    第一层把左手/右手分开，第二层在同一只手的 episode 中继续
-    按夹爪/运动路径等细粒度特征划分。
+    Addresses the "large-scale differences drowning small-scale differences" problem:
+    The first level separates left/right arm, the second level further divides
+    episodes of the same arm by finer features like gripper state or motion path.
 
-    停止条件（满足任一即停）:
-    - 簇内样本数 < min_cluster_size
-    - 递归深度达到 max_depth
-    - auto-k 的 best_rel_gap < min_rel_gap（子层级分界不显著）
-    - 全局叶子簇数达到 max_leaf_clusters（0=不限制）
+    Stop conditions (any one triggers stop):
+    - Cluster size < min_cluster_size
+    - Recursion depth reaches max_depth
+    - Auto-k's best_rel_gap < min_rel_gap (sub-level boundary is not significant)
+    - Global leaf cluster count reaches max_leaf_clusters (0=unlimited)
 
     Returns
     -------
-    tree : 嵌套 dict，包含 sub_clusters（非叶节点）或 leaf=True
+    tree : nested dict containing sub_clusters (non-leaf nodes) or leaf=True
     """
     if _leaf_counter is None:
         _leaf_counter = [0]
@@ -274,9 +275,9 @@ def recursive_clustering(
 
 def flatten_tree(tree: dict, prefix: str = "") -> dict[str, list[int]]:
     """
-    将递归聚类树展平为 {leaf_path: [episode_ids]}。
+    Flatten the recursive clustering tree into {leaf_path: [episode_ids]}.
 
-    例: {"1.1": [0,3,5,...], "1.2": [10,14,...], "2": [1,2,4,...]}
+    Example: {"1.1": [0,3,5,...], "1.2": [10,14,...], "2": [1,2,4,...]}
     """
     if tree.get("leaf", True):
         key = prefix.rstrip(".") if prefix else "0"
@@ -294,11 +295,11 @@ def tree_to_labels(
     episode_ids: list[int],
 ) -> tuple[np.ndarray, dict[str, int]]:
     """
-    将递归聚类结果转换为与 episode_ids 对齐的 numeric label 数组。
+    Convert recursive clustering results into a numeric label array aligned with episode_ids.
 
     Returns
     -------
-    labels : (N,) 数值标签
+    labels : (N,) numeric labels
     path_to_label : {leaf_path: numeric_label}
     """
     flat = flatten_tree(tree)
@@ -320,12 +321,12 @@ def kmedoids_clustering(
     random_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    K-Medoids 聚类（直接基于距离矩阵，不需要坐标）。
+    K-Medoids clustering (directly based on distance matrix, no coordinates needed).
 
     Returns
     -------
-    labels : (N,) 聚类标签
-    medoid_indices : (n_clusters,) 每个簇的 medoid 在原数组中的下标
+    labels : (N,) cluster labels
+    medoid_indices : (n_clusters,) index of each cluster's medoid in the original array
     """
     try:
         from sklearn_extra.cluster import KMedoids
@@ -344,7 +345,7 @@ def _simple_kmedoids(
     random_state: int,
     max_iter: int = 300,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """当 sklearn_extra 不可用时的简易 K-Medoids 实现。"""
+    """Simple K-Medoids implementation when sklearn_extra is unavailable."""
     rng = np.random.RandomState(random_state)
     N = dist_matrix.shape[0]
     medoids = rng.choice(N, size=n_clusters, replace=False)
@@ -374,7 +375,7 @@ def _simple_kmedoids(
     return labels, medoids
 
 
-# ──────────────────────── 可视化 ────────────────────────
+# ──────────────────────── Visualization ────────────────────────
 
 def plot_distance_heatmap(
     dist_matrix: np.ndarray,
@@ -382,7 +383,7 @@ def plot_distance_heatmap(
     labels: np.ndarray | None = None,
     output_path: str = "distance_heatmap.png",
 ):
-    """绘制距离矩阵热力图，可选按聚类标签排序。"""
+    """Plot distance matrix heatmap, optionally sorted by cluster labels."""
     if labels is not None:
         order = np.argsort(labels)
         sorted_mat = dist_matrix[np.ix_(order, order)]
@@ -417,7 +418,7 @@ def plot_dendrogram(
     n_clusters: int,
     output_path: str = "dendrogram.png",
 ):
-    """绘制层次聚类树状图。"""
+    """Plot hierarchical clustering dendrogram."""
     fig, ax = plt.subplots(figsize=(max(14, len(episode_ids) * 0.2), 6))
     dendrogram(
         linkage_matrix,
@@ -442,7 +443,7 @@ def plot_mds_embedding(
     labels: np.ndarray,
     output_path: str = "mds_embedding.png",
 ):
-    """用 MDS 将距离矩阵降维到 2D 并按聚类上色。"""
+    """Use MDS to reduce distance matrix to 2D and color by cluster labels."""
     mds = MDS(n_components=2, dissimilarity="precomputed",
               random_state=42, normalized_stress="auto")
     coords = mds.fit_transform(dist_matrix)
@@ -476,7 +477,7 @@ def print_cluster_summary(
     episode_ids: list[int],
     medoid_indices: np.ndarray | None = None,
 ):
-    """打印每个聚类的轨迹数量和成员 episode ID。"""
+    """Print the number of trajectories and member episode IDs for each cluster."""
     unique_labels = np.unique(labels)
     print(f"\n{'='*60}")
     print(f"  Clustering Summary: {len(unique_labels)} clusters, {len(labels)} trajectories")

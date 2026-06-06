@@ -30,10 +30,10 @@ pretrained_checkpoint=./results/Checkpoints/0127_QwenGR00TN1d6_epx3_multi_robot/
 
 
 
-# # 初始化 conda（只需执行一次或在新 shell 中执行）
+# # Initialize conda (only needed once or in a new shell)
 # source /root/miniconda3/etc/profile.d/conda.sh
-# # 或：eval "$(conda shell.bash hook)"
-# # 激活环境
+# # Or: eval "$(conda shell.bash hook)"
+# # Activate environment
 # conda activate starVLA
 
 

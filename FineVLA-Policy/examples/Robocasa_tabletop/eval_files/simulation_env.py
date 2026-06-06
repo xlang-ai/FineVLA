@@ -46,8 +46,8 @@ class VideoConfig:
     """Configuration for video recording settings."""
 
     video_dir: Optional[str] = None
-    steps_per_render: int = 2 # 和10 是什么关系
-    fps: int = 10 # BUG 数据集中应该是 20？
+    steps_per_render: int = 2 # What is the relationship with 10?
+    fps: int = 10 # BUG: should this be 20 in the dataset?
     codec: str = "h264"
     input_pix_fmt: str = "rgb24"
     crf: int = 22

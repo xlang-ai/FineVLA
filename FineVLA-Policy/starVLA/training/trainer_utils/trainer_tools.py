@@ -464,18 +464,18 @@ class TrainerUtils:
             self.accelerator.print(f"No checkpoint directory found at {checkpoint_dir}")
             return None, 0
 
-        # 获取所有符合命名规则，确保只匹配以 .pt 结尾的文件
+        # Get all files matching the naming pattern, ensure only .pt files are matched
         checkpoints = [
             f for f in os.listdir(checkpoint_dir) 
-            if re.match(r"steps_(\d+)_pytorch_model\.pt$", f)  # 添加 $ 确保以 .pt 结尾
-            and os.path.isfile(os.path.join(checkpoint_dir, f))  # 确保是文件
+            if re.match(r"steps_(\d+)_pytorch_model\.pt$", f)  # Add $ to ensure it ends with .pt
+            and os.path.isfile(os.path.join(checkpoint_dir, f))  # Ensure it is a file
         ]
 
         if not checkpoints:
             self.accelerator.print(f"No checkpoints found in {checkpoint_dir}")
             return None, 0
 
-        # 提取步数并排序
+        # Extract step numbers and sort
         try:
             checkpoints_with_steps = [
                 (ckpt, int(re.search(r"steps_(\d+)_pytorch_model\.pt", ckpt).group(1)))
@@ -485,7 +485,7 @@ class TrainerUtils:
             self.accelerator.print(f"Error parsing checkpoint filenames: {e}")
             return None, 0
 
-        # 按步数排序，获取最新的 checkpoint
+        # Sort by step number, get the latest checkpoint
         checkpoints_with_steps.sort(key=lambda x: x[1])
         latest_checkpoint, completed_steps = checkpoints_with_steps[-1]
 

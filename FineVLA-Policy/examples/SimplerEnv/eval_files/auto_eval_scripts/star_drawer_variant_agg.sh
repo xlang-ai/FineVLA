@@ -129,7 +129,7 @@ EvalSim() {
 for ckpt_path in "${ckpt_paths[@]}"; do
   for env_name in "${env_names[@]}"; do
 
-    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to CUDA_VISIBLE_DEVICES GPU ID
+    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to GPU ID in CUDA_VISIBLE_DEVICES
     if (( (run_count + 1) == 32 )); then
       EvalSim
     else
@@ -151,7 +151,7 @@ for scene_name in "${scene_names[@]}"; do
     for env_name in "${env_names[@]}"; do
       EXTRA_ARGS="--additional-env-build-kwargs shader_dir=rt"
       
-  gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to CUDA_VISIBLE_DEVICES GPU ID
+  gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to GPU ID in CUDA_VISIBLE_DEVICES
       if (( (run_count + 1) == 32 )); then
         EvalSim
       else
@@ -170,7 +170,7 @@ for ckpt_path in "${ckpt_paths[@]}"; do
   for env_name in "${env_names[@]}"; do
     EXTRA_ARGS="--additional-env-build-kwargs shader_dir=rt light_mode=brighter"
     
-    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to CUDA_VISIBLE_DEVICES GPU ID
+    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to GPU ID in CUDA_VISIBLE_DEVICES
     if (( (run_count + 1) == 32 )); then
       EvalSim
     else
@@ -180,7 +180,7 @@ for ckpt_path in "${ckpt_paths[@]}"; do
 
     EXTRA_ARGS="--additional-env-build-kwargs shader_dir=rt light_mode=darker"
     
-    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to CUDA_VISIBLE_DEVICES GPU ID
+    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to GPU ID in CUDA_VISIBLE_DEVICES
     if (( (run_count + 1) % 32 == 0 )); then
       EvalSim
     else
@@ -198,7 +198,7 @@ for ckpt_path in "${ckpt_paths[@]}"; do
   for env_name in "${env_names[@]}"; do
     EXTRA_ARGS="--additional-env-build-kwargs shader_dir=rt station_name=mk_station2"
     
-    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to CUDA_VISIBLE_DEVICES GPU ID
+    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to GPU ID in CUDA_VISIBLE_DEVICES
     if (( (run_count + 1) % 32 == 0 )); then
       EvalSim
     else
@@ -209,7 +209,7 @@ for ckpt_path in "${ckpt_paths[@]}"; do
 
     EXTRA_ARGS="--additional-env-build-kwargs shader_dir=rt station_name=mk_station3"
     
-    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to CUDA_VISIBLE_DEVICES GPU ID
+    gpu_id=${CUDA_DEVICES[$((run_count % NUM_GPUS))]}  # Map to GPU ID in CUDA_VISIBLE_DEVICES
     if (( (run_count + 1) % 32 == 0 )); then
       EvalSim
     else
@@ -226,7 +226,7 @@ done
 # echo "✅ All evaluations completed"
 
 
-# 判断是否还有 评测的sim 在跑
+# Check if any evaluation sim processes are still running
 while pgrep -f "examples/SimplerEnv/eval_files/start_simpler_env.py" > /dev/null; do
     echo "Waiting for all evaluation environments to finish..."
     sleep 300

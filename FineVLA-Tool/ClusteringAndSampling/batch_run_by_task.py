@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-按 task 分组的 VLA 轨迹聚类分析 —— 适用于 BC_Z / RT-1 等大规模扁平数据集。
+Task-level VLA trajectory clustering analysis -- for large-scale flat datasets like BC_Z / RT-1.
 
-这些数据集没有物理子目录，所有 episode 混在一个 data/ 下面，
-task 信息记录在 meta/episodes.jsonl 中。
-本脚本以 task 为聚类单元：解析 episodes.jsonl → 按 task 加载对应 parquet → DTW + 聚类。
+These datasets have no physical subdirectories; all episodes are mixed under a single data/ folder,
+with task information recorded in meta/episodes.jsonl.
+This script uses task as the clustering unit: parse episodes.jsonl -> load corresponding parquets by task -> DTW + clustering.
 
-用法:
-    # 处理 BC_Z（默认 recursive，max_leaf_clusters=20）
+Usage:
+    # Process BC_Z (default recursive, max_leaf_clusters=20)
     python batch_run_by_task.py --datasets BC_Z --output_root ./results_by_task
 
-    # 处理 RT-1
+    # Process RT-1
     python batch_run_by_task.py --datasets RT-1 --output_root ./results_by_task
 
-    # 调试：只跑 3 个 task
+    # Debug: only run 3 tasks
     python batch_run_by_task.py --datasets BC_Z --output_root ./results_by_task --max_tasks 3
 
-    # 断点续跑
+    # Resume from checkpoint
     python batch_run_by_task.py --datasets BC_Z --output_root ./results_by_task --resume
 
-    # 使用 flat 聚类
+    # Use flat clustering
     python batch_run_by_task.py --datasets BC_Z --output_root ./results_by_task --no_recursive --n_clusters 5
 
-    # 同时处理两个数据集
+    # Process two datasets at once
     python batch_run_by_task.py --datasets BC_Z RT-1 --output_root ./results_by_task --resume
 
   python batch_run_by_task.py --datasets BC_Z --output_root ./results_by_task --no_recursive --n_clusters 20 --cluster_method both --linkage_method average --filter_report auto --resume
@@ -83,7 +83,7 @@ from utils.clustering_analysis import (
 
 
 def load_filter_report(report_path: str) -> set[int]:
-    """从 *filter_report.json 中提取有问题的 episode index 集合。"""
+    """Extract problematic episode index set from *filter_report.json."""
     with open(report_path, encoding="utf-8") as f:
         data = json.load(f)
     problem = set()
@@ -100,10 +100,10 @@ def load_filter_report(report_path: str) -> set[int]:
 
 
 def find_filter_reports(dataset_root: str, recursive: bool = False) -> list[str]:
-    """在 dataset_root 下查找所有以 filter_report.json 结尾的文件。
+    """Find all files ending with filter_report.json under dataset_root.
 
-    recursive=False: 只在 dataset_root 下查找（非递归）
-    recursive=True:  在 dataset_root 及其一层子目录下查找
+    recursive=False: only search in dataset_root (non-recursive)
+    recursive=True:  search in dataset_root and its one level of subdirectories
     """
     results = []
     for fname in os.listdir(dataset_root):
@@ -118,7 +118,7 @@ def find_filter_reports(dataset_root: str, recursive: bool = False) -> list[str]
 
 
 def sanitize_task_name(name: str, max_len: int = 120) -> str:
-    """将 task 名称转为安全的目录名。"""
+    """Convert a task name into a filesystem-safe directory name."""
     s = re.sub(r'[^\w\s\-]', '', name)
     s = re.sub(r'\s+', '_', s.strip())
     return s[:max_len] if s else "unknown_task"
@@ -150,7 +150,7 @@ def generate_task_per_episode(
     task_map: dict[str, list[int]],
     output_path: str,
 ):
-    """生成 task_per_episode.json。"""
+    """Generate task_per_episode.json."""
     total_eps = sum(len(v) for v in task_map.values())
     result = {
         "dataset_name": dataset_name,
@@ -185,11 +185,11 @@ def process_task(
     min_rel_gap: float = 0.3,
     max_leaf_clusters: int = 20,
 ) -> dict:
-    """处理单个 task，加载其 episodes 并执行聚类。"""
+    """Process a single task: load its episodes and run clustering."""
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # 1. 加载轨迹
+    # 1. Load trajectories
     trajectories = load_trajectories_by_indices(
         dataset_root, cfg, side, episode_indices, chunk_size,
     )
@@ -209,7 +209,7 @@ def process_task(
     logger.info(f"    {N} traj, dim={trajectories[0].dim}, "
                 f"len: {min(lengths)}~{max(lengths)}, {n_pairs} pairs")
 
-    # 2. DTW 距离矩阵
+    # 2. DTW distance matrix
     t0 = time.time()
     two_stage = getattr(cfg, 'two_stage', False)
     dist_matrix = compute_distance_matrix(
@@ -249,7 +249,7 @@ def process_task(
     with open(os.path.join(output_dir, "distance_matrix.json"), "w") as f:
         json.dump(dm_json, f, indent=2, ensure_ascii=False)
 
-    # 3. 聚类
+    # 3. Clustering
     result = {
         "dataset_name": cfg.dataset_name,
         "dataset_root": dataset_root,
@@ -368,7 +368,7 @@ def process_task(
     with open(os.path.join(output_dir, "cluster_results.json"), "w") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    # 4. 可视化
+    # 4. Visualization
     t_viz = time.time()
     try:
         plot_distance_heatmap(
@@ -400,48 +400,48 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter,
     )
     p.add_argument("--datasets", nargs="+", required=True,
-                   help="数据集名称，如 BC_Z RT-1")
+                   help="Dataset names, e.g. BC_Z RT-1")
     p.add_argument("--output_root", type=str, default="./results_by_task",
-                   help="输出根目录 (default: ./results_by_task)")
+                   help="Output root directory (default: ./results_by_task)")
     p.add_argument("--side", type=str, default=None,
-                   help="分析哪只手臂 (default: 使用 config)")
+                   help="Which arm side to analyze (default: use config)")
     p.add_argument("--resume", action="store_true",
-                   help="跳过已有 cluster_results.json 的 task")
+                   help="Skip tasks that already have cluster_results.json")
     p.add_argument("--window", type=int, default=None,
-                   help="Sakoe-Chiba 窗口")
+                   help="Sakoe-Chiba window")
 
-    # task 过滤
+    # Task filtering
     p.add_argument("--max_tasks", type=int, default=None,
-                   help="每个数据集最多处理几个 task（调试用）")
+                   help="Max tasks to process per dataset (for debugging)")
     p.add_argument("--min_episodes_per_task", type=int, default=3,
-                   help="跳过 episode 数少于此值的 task (default: 3)")
+                   help="Skip tasks with fewer episodes than this value (default: 3)")
     p.add_argument("--task_filter", type=str, default=None,
-                   help="只处理名称包含此子串的 task（用于调试）")
+                   help="Only process tasks whose name contains this substring (for debugging)")
 
-    # 聚类参数
+    # Clustering parameters
     p.add_argument("--no_recursive", action="store_true",
-                   help="禁用递归聚类，使用 flat 模式")
+                   help="Disable recursive clustering, use flat mode")
     p.add_argument("--n_clusters", type=int, default=None,
-                   help="flat 模式的聚类数（0=自动，默认使用 config）")
+                   help="Number of clusters in flat mode (0=auto, default: use config)")
     p.add_argument("--cluster_method", type=str, default="both",
                    choices=["hierarchical", "kmedoids", "both"])
     p.add_argument("--linkage_method", type=str, default="average",
                    choices=["average", "complete", "single", "ward"])
 
-    # 递归聚类参数
+    # Recursive clustering parameters
     p.add_argument("--max_depth", type=int, default=3,
-                   help="递归最大深度 (default: 3)")
+                   help="Maximum recursion depth (default: 3)")
     p.add_argument("--min_cluster_size", type=int, default=4,
-                   help="递归终止的最小簇大小 (default: 4)")
+                   help="Minimum cluster size to stop recursion (default: 4)")
     p.add_argument("--min_rel_gap", type=float, default=None,
-                   help="子层级 auto-k 的最小 rel_gap 阈值（默认使用 config）")
+                   help="Minimum rel_gap threshold for sub-level auto-k (default: use config)")
     p.add_argument("--max_leaf_clusters", type=int, default=20,
-                   help="每个 task 最多产生的叶子簇数 (default: 20)")
+                   help="Max leaf clusters per task (default: 20)")
 
-    # episode 过滤
+    # Episode filtering
     p.add_argument("--filter_report", type=str, default=None,
-                   help="filter_report.json 路径，排除问题 episode。"
-                        "传 'auto' 则自动在数据集目录下查找 *filter_report.json")
+                   help="Path to filter_report.json to exclude problematic episodes. "
+                        "Pass 'auto' to automatically search for *filter_report.json in dataset directory")
 
     args = p.parse_args()
 
@@ -462,15 +462,15 @@ def main():
         output_prefix: str,
         sub_label: str = "",
     ) -> list[dict]:
-        """处理一个数据集根目录下的所有 task，返回 ds_results 列表。"""
+        """Process all tasks under a single dataset root directory, returns ds_results list."""
         label = f"{cfg.dataset_name}/{sub_label}" if sub_label else cfg.dataset_name
 
-        # 发现 task
+        # Discover tasks
         logger.info(f"  [{label}] Discovering tasks from meta/episodes.jsonl ...")
         task_map, chunk_size = discover_tasks(dataset_root)
         logger.info(f"  [{label}] Found {len(task_map)} tasks, chunk_size={chunk_size}")
 
-        # 加载 filter_report，排除问题 episode
+        # Load filter_report to exclude problematic episodes
         problem_episodes: set[int] = set()
         if args.filter_report:
             if args.filter_report == "auto":
@@ -494,13 +494,13 @@ def main():
                              f"({total_before - total_after} removed), "
                              f"{len(task_map)} tasks remaining")
 
-        # 生成 task_per_episode.json
+        # Generate task_per_episode.json
         tpe_path = os.path.join(output_prefix, "task_per_episode.json")
         os.makedirs(os.path.dirname(tpe_path), exist_ok=True)
         generate_task_per_episode(dataset_root, label, task_map, tpe_path)
         logger.info(f"  [{label}] Saved task_per_episode.json -> {tpe_path}")
 
-        # 过滤 task
+        # Filter tasks
         tasks_to_process = []
         for task_name, ep_indices in sorted(task_map.items(), key=lambda x: -len(x[1])):
             if len(ep_indices) < args.min_episodes_per_task:
@@ -575,7 +575,7 @@ def main():
         ds_results = []
 
         if cfg.has_sub_datasets:
-            # 遍历子数据集，每个子数据集独立按 task 聚类
+            # Iterate sub-datasets, each one clusters by task independently
             sub_datasets = discover_sub_datasets(cfg)
             logger.info(f"  Found {len(sub_datasets)} sub-datasets")
             for sub_idx, sub_path in enumerate(sub_datasets):
@@ -593,7 +593,7 @@ def main():
                     r["sub_dataset"] = sub_name
                 ds_results.extend(sub_results)
         else:
-            # 扁平数据集（BC_Z, RT-1 等）
+            # Flat dataset (BC_Z, RT-1, etc.)
             output_prefix = os.path.join(args.output_root, cfg.dataset_name)
             ds_results = _process_one_root(
                 dataset_root=dataset_root,

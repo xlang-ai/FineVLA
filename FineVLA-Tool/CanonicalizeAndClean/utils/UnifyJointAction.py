@@ -1,21 +1,21 @@
 """
-【代码的作用】
-将action 和state 的变成统一的表示，重点在于两个方面的统一：1.旋转表示的统一；2.绝对位置和相对位置的统一
+Purpose of this code:
+Convert action and state into a unified representation, focusing on two aspects of unification:
+1. Rotation representation unification; 2. Absolute/relative position unification.
 
-1.旋转表示的统一
-- 只有EEF 会需要有这种统一，因为EEF的旋转表示有4种（rotvec, quat, quat(wxyz), euler），需要统一成一种;
-- joint 只会是关节角，没有旋转表示的统一问题
+1. Rotation representation unification
+- Only EEF requires this unification, since EEF rotation has 4 representations (rotvec, quat, quat(wxyz), euler) that need to be unified;
+- Joint is always joint angles, no rotation representation unification needed.
 
-2.绝对位置和相对位置的统一
-- state 一定是绝对位置
-- action 可能是 abs/delta/rel 三种表示，需要统一成一种
-  - abs: 绝对空间位置
-  - rel：相对 state[0] 的相对位置
-  - delta：相对 state[t-1] 的相对位置
+2. Absolute/relative position unification
+- State is always in absolute position
+- Action may be in abs/delta/rel representations that need to be unified:
+  - abs: absolute spatial position
+  - rel: position relative to state[0]
+  - delta: position relative to state[t-1]
 
-3.一些assumption
-- state 一定是 abs
-
+3. Assumptions
+- State is always abs
 """
 
 
@@ -45,14 +45,14 @@ class ModalityTransform(BaseModel, ABC):
 UNIFIED_STATE_ACTION_DIM = 80
 UNIFIED_STATE_ACTION_INDICES = {
     "left_joint": [0, 7], # 7
-    "left_eef": [7, 16], # 9 考虑旋转可能统一成6d rot表示，预留3xyz+6rot维
-    "left_gripper": [16, 17], # 1 开合
-    "left_hand": [17, 29], # 12 灵巧手先考虑12dof以内的，
+    "left_eef": [7, 16], # 9 — considering rotation may be unified to 6D rot representation, reserving 3 xyz + 6 rot dims
+    "left_gripper": [16, 17], # 1 — open/close
+    "left_hand": [17, 29], # 12 — dexterous hand, considering up to 12 DoF for now
     "right_joint": [29, 36], # 7
     "right_eef": [36, 45], # 9
-    "right_gripper": [45, 46], # 1 开合
+    "right_gripper": [45, 46], # 1 — open/close
     "right_hand": [46, 58], # 12
-    "reserved": [58, 80], # 22 预留
+    "reserved": [58, 80], # 22 — reserved
 }
 
 
@@ -63,7 +63,7 @@ class UnifiedStateActionTransform(ModalityTransform):
     (target_joint_state_type, target_eef_state_type, target_joint_action_type, target_eef_action_type)
     2. The converted representations will be filled to the target vector.
     """
-    apply_to: list[str] = Field(..., description="All state and action keys to be transformed. 实际需要给全部的state_keys+action_keys")
+    apply_to: list[str] = Field(..., description="All state and action keys to be transformed. Must include all state_keys + action_keys.")
     modality_path: Path = Field(..., description="Path to the modality json file.")
 
     target_joint_state_type: str = Field(..., description="Target type for joint state, e.g. 'abs_joint'")
@@ -71,13 +71,14 @@ class UnifiedStateActionTransform(ModalityTransform):
     target_joint_action_type: str = Field(..., description="Target type for joint action, e.g. 'abs_joint'")
     target_eef_action_type: str = Field(..., description="Target type for eef action, e.g. 'abs_rotvec'")
     '''
-    type说明：目前有abs/delta/rel_joint/rotvec/quat/wxyz/euler这些组合
-    1. 对于第一部分（是否绝对表示）：
-        - 所有state一定是abs的
-        - modality json中原始的action可能是abs或delta（a_t表示成在s_t基础上的变换）
-        - target type中目标的action表示可能是abs或delta（a_t表示成在s_t基础上的变换）或rel（a_t表示成在s_0基础上的变换）
-    2. 对于第二部分，left_eef和right_eef使用rotvec/euler/quat/wxyz来表示旋转变换表达的类型，在delta/rel和abs之间互转时需要用到旋转变换
-    其他部分都是joint，可以直接在数值上加减
+    Type explanation: currently these are combinations of abs/delta/rel and joint/rotvec/quat/wxyz/euler.
+    1. For the first part (whether absolute representation):
+        - All states are always abs
+        - The original action in modality json may be abs or delta (a_t expressed as a transform on top of s_t)
+        - The target action representation may be abs, delta (a_t as transform on s_t), or rel (a_t as transform on s_0)
+    2. For the second part, left_eef and right_eef use rotvec/euler/quat/wxyz to represent the rotation type;
+    rotation transforms are needed when converting between delta/rel and abs.
+    All other parts are joint and can be directly added/subtracted numerically.
     '''
 
     _modality_config: dict | None = PrivateAttr(default=None)
@@ -88,7 +89,7 @@ class UnifiedStateActionTransform(ModalityTransform):
             self._modality_config = json.load(f)
 
     # ---------- EEF processing functions ----------
-    # 解析格式：相对/绝对_旋转表示类型
+    # Parse format: relative/absolute_rotation_representation_type
     def _eef_parse_type(self, type_str: str) -> tuple[str, str]:
         """Return (abs|delta|rel, joint|rotvec|euler|quat|wxyz)."""
         parts = type_str.split("_", 1)
@@ -96,7 +97,7 @@ class UnifiedStateActionTransform(ModalityTransform):
             raise ValueError(f"Invalid eef type: {type_str}")
         return parts[0], parts[1]
 
-    # 将eef array转成pos和scipy rot 返回时一个 pos（xyz） 和 rot（scipy 的Rotation对象）
+    # Convert eef array to pos and scipy rot; returns pos (xyz) and rot (scipy Rotation object)
     def _eef_numpy_to_pos_rot(self, arr: np.ndarray, type_str: str) -> Tuple[np.ndarray, R]:
         """(N, D) eef array -> pos (N,3), scipy Rotation. Assumes layout xyz then rotation."""
         assert arr.ndim == 2
@@ -115,7 +116,7 @@ class UnifiedStateActionTransform(ModalityTransform):
             raise ValueError(f"Unknown eef rotation format: {rot_fmt}")
         return pos, rot
 
-    # 将pos和scipy rot转成eef array
+    # Convert pos and scipy rot to eef array
     def _eef_pos_rot_to_numpy(self, pos: np.ndarray, rot: R, target_type: str) -> np.ndarray:
         """pos (N,3), Rotation -> (N, D). Rotation representation use target_type."""
         _, rot_fmt = self._eef_parse_type(target_type)
@@ -138,7 +139,7 @@ class UnifiedStateActionTransform(ModalityTransform):
             return np.concatenate([pos, eu], axis=-1)
         raise ValueError(f"Unknown target rotation format: {rot_fmt}")
 
-    # 将arr填入统一state/action模板unified中的字段[lo:hi]
+    # Fill arr into the unified state/action template at slot [lo:hi]
     def _fill_slot(self, unified: np.ndarray, lo: int, hi: int, arr: np.ndarray, mask: np.ndarray = None) -> None:
         """Fill unified[:, lo:lo+d] with arr. Assert arr length <= slot size (hi - lo).
         If mask is provided, set mask[:, lo:lo+d] to True to indicate valid values."""
@@ -153,8 +154,8 @@ class UnifiedStateActionTransform(ModalityTransform):
 
     def apply(self, data: dict[str, Any]) -> dict[str, Any]:
         """
-        输入：state 和 action 的数据，modality 是对state 和action 的说明（包含原始的key，start，end，type），
-        start 和 end 表示的是 这个字段 在unified_state_action_dim 中的起始和结束位置
+        Input: state and action data; modality describes state and action (including original key, start, end, type).
+        start and end indicate the start and end positions of this field in unified_state_action_dim.
 
         Input data: keys like state.left_joint (16,7), action.left_joint (16,7), etc.
         modality_config: state/action each have keys like left_joint, right_eef, reserved.waist with original_key, start, end, type.
@@ -168,7 +169,7 @@ class UnifiedStateActionTransform(ModalityTransform):
         state_cfg = cfg.get("state", {})
         action_cfg = cfg.get("action", {})
 
-        ### 1. 将apply_to中所有的key区分为state/action, 并且把left_eef, right_eef, others区分开
+        ### 1. Classify all keys in apply_to as state/action, and separate left_eef, right_eef, and others
         def is_eef_key(suffix: str) -> bool:
             return suffix == "left_eef" or suffix == "right_eef" or suffix.startswith("left_eef.") or suffix.startswith("right_eef.")
 
@@ -180,7 +181,7 @@ class UnifiedStateActionTransform(ModalityTransform):
         action_others: Dict[str, Tuple[np.ndarray, str]] = {}
         state_chunk_size, action_chunk_size = None, None
 
-        #1. 对于字段，分为 state/action 和 left_eef/right_eef/others 三类
+        #1. For each field, classify as state/action and left_eef/right_eef/others
         for key in self.apply_to:
             if key not in data:
                 raise ValueError(f"Key {key} not found in data")
@@ -193,7 +194,7 @@ class UnifiedStateActionTransform(ModalityTransform):
                     state_chunk_size = chunk
                 assert state_chunk_size == chunk, f"state chunk size mismatch: {key}"
                 type_str = state_cfg[suffix]["type"]
-                if is_eef_key(suffix): #如果是 eef 的信息，则需要分别处理 left_eef 和 right_eef
+                if is_eef_key(suffix): # If it's eef data, process left_eef and right_eef separately
                     arr = np.asarray(val, dtype=np.float32)
                     if suffix.startswith("left_eef"):
                         state_left_eef_parts.append((suffix, arr, type_str))
@@ -220,12 +221,12 @@ class UnifiedStateActionTransform(ModalityTransform):
 
         assert state_chunk_size is not None and action_chunk_size is not None, "state or action chunk size is not set"
 
-        # 按照apply_to的顺序把left_eef和right_eef的部分拼接起来
+        # Concatenate left_eef and right_eef parts in the order of apply_to
         def concat_eef_parts(parts: List[Tuple[str, np.ndarray, str]]) -> Tuple[np.ndarray, str]:
             if len(parts) == 0:
                 return None, None
-            arrays = [p[1] for p in parts] #numpy的 数值
-            type_str = parts[-1][2] # 左/右手eef的表示类型 以最后一次出现的left_eef/right_eef key为准
+            arrays = [p[1] for p in parts] # numpy arrays
+            type_str = parts[-1][2] # left/right eef representation type, using the last occurrence of left_eef/right_eef key
             return np.concatenate(arrays, axis=-1), type_str
 
         state_left_eef_arr, state_left_eef_type = concat_eef_parts(state_left_eef_parts)
@@ -233,13 +234,13 @@ class UnifiedStateActionTransform(ModalityTransform):
         action_left_eef_arr, action_left_eef_type = concat_eef_parts(action_left_eef_parts)
         action_right_eef_arr, action_right_eef_type = concat_eef_parts(action_right_eef_parts)
 
-        ### 2. 模板
+        ### 2. Template
         unified_state = np.zeros((state_chunk_size, UNIFIED_STATE_ACTION_DIM), dtype=np.float32)
         unified_action = np.zeros((action_chunk_size, UNIFIED_STATE_ACTION_DIM), dtype=np.float32)
         mask_state = np.zeros((state_chunk_size, UNIFIED_STATE_ACTION_DIM), dtype=bool)
         mask_action = np.zeros((action_chunk_size, UNIFIED_STATE_ACTION_DIM), dtype=bool)
 
-        ### 3. 转换left_eef和right_eef部分，填入模板
+        ### 3. Convert left_eef and right_eef parts, fill into the template
         eef_slots = [
             ("left_eef", state_left_eef_arr, state_left_eef_type, action_left_eef_arr, action_left_eef_type),
             ("right_eef", state_right_eef_arr, state_right_eef_type, action_right_eef_arr, action_right_eef_type),
@@ -248,45 +249,45 @@ class UnifiedStateActionTransform(ModalityTransform):
             lo, hi = UNIFIED_STATE_ACTION_INDICES[name]
             dim = hi - lo
             if s_arr is not None:
-                ## 3.1 统一eef state的旋转表示，填进模板
+                ## 3.1 Unify eef state rotation representation, fill into template
                 assert s_type.startswith("abs"), "State eef type must be absolute"
                 pos_s, rot_s = self._eef_numpy_to_pos_rot(s_arr, s_type)
                 out_s = self._eef_pos_rot_to_numpy(pos_s, rot_s, self.target_eef_state_type)
                 self._fill_slot(unified_state, lo, hi, out_s, mask_state)
             if a_arr is not None:
-                # 简化判定：只要用到eef action，就必须有eef state
+                # Simplified check: if eef action is used, eef state must also exist
                 assert s_arr is not None, f"Get eef action {name}, but missing eef state {name}"
-                # 上面已经计算 #pos_s, rot_s = self._eef_numpy_to_pos_rot(s_arr, s_type)
+                # pos_s, rot_s already computed above
                 pos_a, rot_a = self._eef_numpy_to_pos_rot(a_arr, a_type)
                 
-                ## 3.2 根据统一的target type，把eef action转到目标的坐标系下
-                # 如果原始eef action是delta的（世界坐标系下对state的变换），先根据state转成abs
+                ## 3.2 Based on the unified target type, convert eef action to the target coordinate frame
+                # If the original eef action is delta (transform on state in world frame), first convert to abs using state
                 if a_type.startswith("delta"):
                     pos_a = pos_s + pos_a
                     rot_a = rot_a * rot_s
                 else:
                     assert a_type.startswith("abs"), "Unknown eef action type"
-                # 根据得到的绝对eef state和action，计算目标eef action的表示
+                # Given the absolute eef state and action, compute the target eef action representation
                 if self.target_eef_action_type.startswith("rel"):
-                    # 转成在第一个state坐标系下的变换
+                    # Convert to transform relative to the first state's coordinate frame
                     delta_p = pos_a - pos_s[0]
-                    pos_a = rot_s[0].inv().apply(delta_p) # 靠scipy broadcast
+                    pos_a = rot_s[0].inv().apply(delta_p) # relies on scipy broadcast
                     rot_a = rot_s[0].inv() * rot_a
                 elif self.target_eef_action_type.startswith("delta"):
-                    # 转成世界坐标系下相对当前state的变换
+                    # Convert to transform relative to current state in world frame
                     assert state_chunk_size == action_chunk_size, "state and action chunk size must be the same for delta action conversion"
                     pos_a = pos_a - pos_s
                     rot_a = rot_a * rot_s.inv()
                 else:
                     assert self.target_eef_action_type.startswith("abs"), "Unknown target eef action type"
-                    # 当前pos_a, rot_a已经是abs了，啥都不做
+                    # pos_a and rot_a are already abs, nothing to do
                 
-                ## 3.3 统一eef action的旋转表示，填进模板
+                ## 3.3 Unify eef action rotation representation, fill into template
                 out_a = self._eef_pos_rot_to_numpy(pos_a, rot_a, self.target_eef_action_type)
                 self._fill_slot(unified_action, lo, hi, out_a, mask_action)
 
-        ### 4. 转换others部分(全部视为joint意义)，填入模板
-        ## 4.1 对于state，原始和目标一定都是abs_joint，直接填入
+        ### 4. Convert others parts (all treated as joint semantics), fill into template
+        ## 4.1 For state, both original and target are always abs_joint, fill directly
         current_state_slots_lo = {k: UNIFIED_STATE_ACTION_INDICES[k][0] for k in UNIFIED_STATE_ACTION_INDICES.keys()}
         for key, (arr, type_str) in state_others.items():
             assert type_str.startswith("abs"), "State type must be absolute"
@@ -296,7 +297,7 @@ class UnifiedStateActionTransform(ModalityTransform):
             lo = current_state_slots_lo[name]
             self._fill_slot(unified_state, lo, hi, arr, mask_state)
             current_state_slots_lo[name] += arr.shape[-1]
-        ## 4.2 对于action，先转到abs_joint，再转到目标格式
+        ## 4.2 For action, first convert to abs_joint, then convert to the target format
         current_action_slots_lo = {k: UNIFIED_STATE_ACTION_INDICES[k][0] for k in UNIFIED_STATE_ACTION_INDICES.keys()}
         for key, (arr, type_str) in action_others.items():
             # raw action type -> abs joint
@@ -316,15 +317,15 @@ class UnifiedStateActionTransform(ModalityTransform):
                 arr = arr - state_others[key][0]
             else:
                 assert self.target_joint_action_type.startswith("abs"), "Unknown target action type"
-                # 当前arr已经是abs了，啥都不做
-            # 填入模板
+                # arr is already abs, nothing to do
+            # Fill into template
             name = key.split(".")[0]
             _, hi = UNIFIED_STATE_ACTION_INDICES[name]
             lo = current_action_slots_lo[name]
             self._fill_slot(unified_action, lo, hi, arr, mask_action)
             current_action_slots_lo[name] += arr.shape[-1]
 
-        ### 5. 删除原本的state和action，改成统一的
+        ### 5. Remove original state and action, replace with unified ones
         for key in list(data.keys()):
             if key in self.apply_to:
                 del data[key]

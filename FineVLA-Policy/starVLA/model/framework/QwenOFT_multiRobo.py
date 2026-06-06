@@ -16,7 +16,7 @@ Key Points:
 
 Note: How to add special tokens to Qwen2.5:
   download our model checkpoint with special tokens added: https://huggingface.co/StarVLA/Qwen2.5-VL-3B-Instruct-Action
-  or /starVLA/model/modules/vlm/tools/add_qwen_special_tokens/README.md （adpat a little code)
+  or /starVLA/model/modules/vlm/tools/add_qwen_special_tokens/README.md (adpat a little code)
   
 """
 from typing import List
@@ -138,10 +138,10 @@ class Qwenvl_xOFT(baseframework):
         instructions = [example["lang"] for example in examples]  # [B]
         actions = [example["action"] for example in examples]  # [B, T, action_dim]
 
-        # 2. 增强指令（添加action tokens）
+        # 2. Enhance instructions (add action tokens)
         enhanced_instructions = self._add_action_tokens_to_instructions(examples, instructions)
     
-        # 3. Build QwenVL inputs. and 4. VLM前向传播（获取隐藏状态）
+        # 3. Build QwenVL inputs. and 4. VLM forward pass (get hidden states)
         qwen_inputs = self.qwen_vl_interface.build_qwenvl_inputs(images=batch_images, instructions=enhanced_instructions)
         with torch.autocast("cuda", dtype=torch.bfloat16):
             qwenvl_outputs = self.qwen_vl_interface(
@@ -152,16 +152,16 @@ class Qwenvl_xOFT(baseframework):
             )
             last_hidden = qwenvl_outputs.hidden_states[-1]  # [B, L, H]
 
-        # 5. 提取input_ids和创建action_query_mask
+        # 5. Extract input_ids and create action_query_mask
         input_ids = qwen_inputs.get("input_ids", None)
         action_query_mask = self.search_action_token_mask(input_ids)
 
-        # 5. 收集各机器人的数据
+        # 5. Collect data for each robot
         robot_data_dict = self._collect_robot_data(
             examples, last_hidden, action_query_mask, actions
         )
 
-        # 6. forward 每个机器人的数据
+        # 6. Forward pass for each robot's data
         with torch.autocast("cuda", dtype=torch.float32):
             action_loss_dict = {}
             for robo_data in robot_data_dict.values():
@@ -170,7 +170,7 @@ class Qwenvl_xOFT(baseframework):
                 action_queries = robo_data["action_queries"]  # [B_robo, chunk_len, vlm_dim]
                 pred_actions = action_model.predict_action(action_queries)  # [B, chunk_len, action_dim]
 
-                # 计算L1损失
+                # Compute L1 loss
                 action_robo_taget = robo_data["actions"]  # List of arrays
 
                 action_robo_taget = torch.tensor(np.array(action_robo_taget), device=pred_actions.device, dtype=pred_actions.dtype)
@@ -178,7 +178,7 @@ class Qwenvl_xOFT(baseframework):
                 robo_action_loss = self.l1_loss(pred_actions, action_robo_taget)
                 action_loss_dict[robo_name] = robo_action_loss
 
-        # 7. 聚合损失
+        # 7. Aggregate losses
         total_action_loss = sum(action_loss_dict.values()) / len(action_loss_dict)
         return {"action_loss": total_action_loss}
     
@@ -207,10 +207,10 @@ class Qwenvl_xOFT(baseframework):
             batch_images = resize_images(batch_images, target_size=train_obs_image_size)
 
 
-        # 2. 增强指令（添加action tokens）
+        # 2. Enhance instructions (add action tokens)
         enhanced_instructions = self._add_action_tokens_to_instructions(examples, instructions)
     
-        # 3. Build QwenVL inputs. and 4. VLM前向传播（获取隐藏状态）
+        # 3. Build QwenVL inputs. and 4. VLM forward pass (get hidden states)
         qwen_inputs = self.qwen_vl_interface.build_qwenvl_inputs(images=batch_images, instructions=enhanced_instructions)
         with torch.autocast("cuda", dtype=torch.bfloat16):
             qwenvl_outputs = self.qwen_vl_interface(
@@ -221,16 +221,16 @@ class Qwenvl_xOFT(baseframework):
             )
             last_hidden = qwenvl_outputs.hidden_states[-1]  # [B, L, H]
 
-        # 5. 提取input_ids和创建action_query_mask
+        # 5. Extract input_ids and create action_query_mask
         input_ids = qwen_inputs.get("input_ids", None)
         action_query_mask = self.search_action_token_mask(input_ids)
 
-        # 5. 收集各机器人的数据
+        # 5. Collect data for each robot
         robot_data_dict = self._collect_robot_data(
             examples, last_hidden, action_query_mask
         )
 
-        # 6. forward 每个机器人的数据
+        # 6. Forward pass for each robot's data
         robo_prodictions = {}
         with torch.autocast("cuda", dtype=torch.float32):
             for robo_data in robot_data_dict.values():
@@ -258,13 +258,13 @@ class Qwenvl_xOFT(baseframework):
 
     def search_action_token_mask(self, input_ids, action_token_min=None, action_token_max=None):
         """
-        搜索action token的mask
+        Search for the action token mask.
         Args:
-            input_ids: [batch_size, seq_len] 输入token IDs
-            action_token_min: action token的最小ID（可选）
-            action_token_max: action token的最大ID（可选）
+            input_ids: [batch_size, seq_len] input token IDs
+            action_token_min: minimum action token ID (optional)
+            action_token_max: maximum action token ID (optional)
         Returns:
-            mask: [batch_size, seq_len] 布尔掩码，True表示需要计算loss的位置
+            mask: [batch_size, seq_len] boolean mask, True indicates positions where loss should be computed
         """
         if action_token_min is None:
             action_token_min = getattr(self.qwen_vl_interface, '_ACTION_TOKEN_MIN', None)
@@ -277,11 +277,11 @@ class Qwenvl_xOFT(baseframework):
         batch_size, seq_len = input_ids.shape
         mask = torch.zeros_like(input_ids, dtype=torch.bool)
         
-        # 对每个序列进行处理
+        # Process each sequence
         for i in range(batch_size):
             seq = input_ids[i]
             
-            # 找到action token的位置
+            # Find action token positions
             action_mask = (seq >= action_token_min) & (seq <= action_token_max)
             nonzero_indices = torch.nonzero(action_mask, as_tuple=False)
 
@@ -290,7 +290,7 @@ class Qwenvl_xOFT(baseframework):
         return mask
 
     def _add_action_tokens_to_instructions(self, examples, instructions):
-        """为指令添加action token占位符"""
+        """Add action token placeholders to instructions"""
         enhanced_instructions = []
         
         for example, instruction in zip(examples, instructions):
@@ -309,7 +309,7 @@ class Qwenvl_xOFT(baseframework):
         return enhanced_instructions
 
     def _collect_robot_data(self, examples, last_hidden, action_query_mask, actions=None):
-        """收集各机器人的数据"""
+        """Collect data for each robot"""
         robot_data_dict = {}
         if "action" in examples[0]:
             actions = [example["action"] for example in examples]
@@ -400,7 +400,7 @@ if __name__ == "__main__":
 
 
     # try forward model
-    # can be fake sample， but here get from dataloader for simpler
+    # can be fake sample, but here get from dataloader for simpler
     from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
 
     vla_dataset_cfg = cfg.datasets.vla_data

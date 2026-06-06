@@ -2,7 +2,7 @@ export PYTHONPATH=$(pwd):${PYTHONPATH}
 star_vla_python=/root/miniconda3/envs/starVLA/bin/python
 
 ##### get parameters #####
-# 判断是否传入参数，否则用默认值
+# Check if an argument was provided; otherwise use the default value
 if [ -n "$1" ]; then
   MODEL_PATH="$1"
 else
@@ -15,7 +15,7 @@ gpu_id=${3:-0}
 ##### get parameters #####
 
 #### build output directory #####
-# 获取 ckpt 目录并创建 output_server 目录
+# Get the checkpoint directory and create the output_server directory
 ckpt_dir=$(dirname "${MODEL_PATH}")
 ckpt_base=$(basename "${MODEL_PATH}")
 ckpt_name="${ckpt_base%.*}"

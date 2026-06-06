@@ -197,7 +197,7 @@ class DiT(ModelMixin, ConfigMixin):
         super().__init__()
 
         self.attention_head_dim = attention_head_dim
-        self.inner_dim = self.config.num_attention_heads * self.config.attention_head_dim # TODO 这里好像哈VLM 的不符合 @JinhuiYE
+        self.inner_dim = self.config.num_attention_heads * self.config.attention_head_dim # TODO this seems inconsistent with VLM @JinhuiYE
         self.gradient_checkpointing = False
 
         # Timestep encoder

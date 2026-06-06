@@ -89,14 +89,14 @@ class Qwen_xGR00T_exp3(baseframework):
         # align dims --> we should put them to config or no?
         self.config.framework.action_model.diffusion_model_cfg.cross_attention_dim = self.qwen_vl_interface.model.config.hidden_size
 
-        self.action_model: FlowmatchingActionHead = get_action_model(config=self.config)  # 修复后续引用
+        self.action_model: FlowmatchingActionHead = get_action_model(config=self.config)  # fix subsequent type references
 
         self.future_action_window_size = config.framework.action_model.future_action_window_size
         self.past_action_window_size = config.framework.action_model.past_action_window_size
         self.chunk_len = self.past_action_window_size + 1 + self.future_action_window_size
         
     def _add_robo_meta_tokens_to_instructions(self, examples, instructions):
-        """为不同机器人的 meta info 添加到 instruction 中"""
+        """Add robot-specific meta info to instructions"""
         enhanced_instructions = []
         
         for example, instruction in zip(examples, instructions):
@@ -132,13 +132,13 @@ class Qwen_xGR00T_exp3(baseframework):
         """
         examples = collate_fn_extend_dim(examples, max_dim=32)
 
-        batch_images = [example["image"] for example in examples]  #  [B，[PLT]]
+        batch_images = [example["image"] for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
-        actions = [example["action"] for example in examples]  # label [B， len, 7]
+        actions = [example["action"] for example in examples]  # label [B, len, 7]
         
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
         
-        # 2. 增强指令（添加action tokens）
+        # 2. Enhance instructions (add action tokens)
         instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions)
     
 
@@ -200,13 +200,13 @@ class Qwen_xGR00T_exp3(baseframework):
         
         examples = collate_fn_extend_dim(examples, max_dim=32)
 
-        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B，[PLT]]
+        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
     
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
         
-        # 2. 增强指令（添加action tokens）
-        instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions) # TODO 也应该只需要 examples
+        # 2. Enhance instructions (add action tokens)
+        instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions) # TODO should only need examples
     
         train_obs_image_size = getattr(self.config.datasets.vla_data, "image_size", None)
         if train_obs_image_size:
@@ -289,7 +289,7 @@ if __name__ == "__main__":
     print(f"Unnormalized Action: {normalized_actions}")
 
     # # Advance: try forward model with dataloader
-    # # can be fake sample， but here get from dataloader for simpler
+    # # can be fake sample, but here get from dataloader for simpler
     vla_dataset_cfg = cfg.datasets.vla_data
     from torch.utils.data import DataLoader
     from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn

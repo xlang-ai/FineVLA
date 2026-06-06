@@ -235,7 +235,7 @@ done
 stop_all_services
 wait
 
-# 等待所有 start_simpler_env.py 进程结束
+# Wait for all start_simpler_env.py processes to finish
 while pgrep -f "start_simpler_env.py" > /dev/null; do
     echo "[INFO] Waiting for start_simpler_env.py processes to finish..."
     sleep 100

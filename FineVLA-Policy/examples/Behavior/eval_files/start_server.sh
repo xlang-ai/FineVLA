@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Debug: 输出当前使用的 Python 环境
+# Debug: Print the current Python environment
 echo "Using Python: $(which python)"
 
-# 设置必要的环境变量
+# Set required environment variables
 export star_vla_python=/gpfs/wangzixuan/conda_envs/starVLA/bin/python
 export sim_python=/gpfs/wangzixuan/conda_envs/behavior/bin/python
 export BEHAVIOR_PATH=/gpfs/wangzixuan/Jinhui/llavavla0/playground/Datasets/BEHAVIOR_challenge
@@ -14,19 +14,19 @@ export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
 # Prefer NVIDIA GLX vendor when any GL deps are touched
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 
-# 配置模型路径和端口
+# Configure model path and port
 MODEL_PATH="/gpfs/wangzixuan/Jinhui/llavavla0/playground/Checkpoints/1031_BEHAVIOR_challenge_qwengroot/checkpoints/steps_40000_pytorch_model.pt"
 PORT=10197
 WRAPPERS="DefaultWrapper"
-USE_STATE=False  # 是否使用状态作为观察的一部分
+USE_STATE=False  # Whether to include state as part of the observation
 
-# 配置任务名称
-TASK_NAME="turning_on_radio"  # 选择一个简单的任务
+# Configure task name
+TASK_NAME="turning_on_radio"  # Choose a simple task
 CLIENT_LOG_FILE="/gpfs/wangzixuan/Jinhui/llavavla0/playground/Checkpoints/1031_BEHAVIOR_challenge_qwengroot/client_log/log_${TASK_NAME}.txt"
 SERVER_LOG_FILE="/gpfs/wangzixuan/Jinhui/llavavla0/playground/Checkpoints/1031_BEHAVIOR_challenge_qwengroot/server_log/log_${TASK_NAME}.txt"
 
 
-# 启动服务
+# Start the service
 echo "▶️ Starting server on port ${PORT}..."
 CUDA_VISIBLE_DEVICES=6 ${star_vla_python} deployment/model_server/server_policy.py \
     --ckpt_path ${MODEL_PATH} \
@@ -38,9 +38,9 @@ CUDA_VISIBLE_DEVICES=6 ${star_vla_python} deployment/model_server/server_policy.
 
 
 # SERVER_PID=$!
-# sleep 15  # 等待服务器启动
+# sleep 15  # Wait for the server to start
 
-# # 检查服务器是否启动成功
+# # Check if the server started successfully
 # if ps -p ${SERVER_PID} > /dev/null; then
 #     echo "✅ Server started successfully (PID: ${SERVER_PID})"
 # else

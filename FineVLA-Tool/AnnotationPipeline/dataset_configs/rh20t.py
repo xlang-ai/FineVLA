@@ -4,8 +4,8 @@ Dataset configuration for RH20T (rh20t_robointer).
 Views: primary + wrist
 
 Strategy:
-  - Samples WITH steps_raw (94%): galaxea_step_refinement，按 step 逐段精化，使用 primary view。
-  - Samples WITHOUT steps_raw (6%): 标准两阶段 analysis → refinement，随机选不同视角。
+  - Samples WITH steps_raw (94%): galaxea_step_refinement, refine step by step using the primary view.
+  - Samples WITHOUT steps_raw (6%): standard two-stage analysis → refinement, randomly selecting different views.
 """
 
 import os
@@ -32,7 +32,7 @@ _STEP_REFINEMENT_STAGES = [
 class Rh20tConfig(BaseDatasetConfig):
     dataset_name = "rh20t_robointer"
 
-    # 无 steps_raw 时走标准两阶段
+    # Use standard two-stage pipeline when steps_raw is absent
     stages = [
         StageDefinition(
             name="analysis",
@@ -75,12 +75,12 @@ class Rh20tConfig(BaseDatasetConfig):
                 "video_path": os.path.join(base, dataset_dir, videos[view_name]),
             }
 
-        # 有 steps_raw：统一用 primary view
+        # Has steps_raw: use primary view for all stages
         if sample.get("steps_raw"):
             chosen = "primary" if "primary" in videos else views[0]
             return {"refinement": _resolve(chosen)}
 
-        # 无 steps_raw：两阶段随机选不同视角
+        # No steps_raw: randomly select different views for the two stages
         available = [v for v in views if v in videos]
         if not available:
             available = views

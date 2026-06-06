@@ -973,7 +973,7 @@ class AgilexDataConfig:
 
 ###########################################################################################
 
-class BEHAVIORDataConfig: # TBD 能否直接覆盖掉 starVLA/dataloader/gr00t_lerobot/embodiment_tags.py
+class BEHAVIORDataConfig: # TBD can we directly override embodiment_tags.py
     video_keys = [
         "video.head_rgb",
         # for dino
@@ -1003,12 +1003,12 @@ class BEHAVIORDataConfig: # TBD 能否直接覆盖掉 starVLA/dataloader/gr00t_l
     
     language_keys = ["annotation.human.action.task_description"]
 
-    # 定义了 index 的 horizon
+    # Defines the index horizon
     observation_indices = [0]
     action_indices = list(range(50)) #
     action_dim = 23
 
-    def modality_config(self): # TODO 为什么嗨哟这里的一层？
+    def modality_config(self): # TODO why is there still this extra layer?
         video_modality = ModalityConfig(
             delta_indices=self.observation_indices,
             modality_keys=self.video_keys,
@@ -1035,7 +1035,7 @@ class BEHAVIORDataConfig: # TBD 能否直接覆盖掉 starVLA/dataloader/gr00t_l
 
     def transform(self):
         transforms = [
-            # # state transforms @Jinhui 因为原始数据就算了，直接用原始的
+            # # state transforms @Jinhui since original data is already computed, use it directly
             # StateActionToTensor(apply_to=self.state_keys),
             # StateActionSinCosTransform(apply_to=self.state_keys),
             # action transforms

@@ -107,9 +107,9 @@ class InternVLA_M1(baseframework):
             dict:
                 action_loss (torch.Tensor): Scalar diffusion noise prediction loss.
         """
-        batch_images = [example["image"] for example in examples]  #  [B，[PLT]]
+        batch_images = [example["image"] for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
-        actions = [example["action"] for example in examples]  # label [B， len, 7]
+        actions = [example["action"] for example in examples]  # label [B, len, 7]
 
         # Step 1: QWenVL input format
         qwen_inputs = self.qwen_vl_interface.build_qwenvl_inputs(images=batch_images, instructions=instructions)
@@ -308,7 +308,7 @@ class InternVLA_M1(baseframework):
         processor = getattr(self.qwen_vl_interface, "processor", None)
         model = getattr(self.qwen_vl_interface, "model", None)
         # if processor is None or model is None:
-        #     raise RuntimeError("qwen_vl_interface 缺少 processor 或 model。")
+        #     raise RuntimeError("qwen_vl_interface is missing processor or model.")
 
         messages0 = [
             {
@@ -396,7 +396,7 @@ if __name__ == "__main__":
     # model.load_state_dict(state_dict, strict=True)
 
     # # try forward model
-    # # can be fake sample， but here get from dataloader for simpler
+    # # can be fake sample, but here get from dataloader for simpler
     # from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
 
     # vla_dataset_cfg = cfg.datasets.vla_data

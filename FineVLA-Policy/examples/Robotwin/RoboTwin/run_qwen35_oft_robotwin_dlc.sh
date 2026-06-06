@@ -53,7 +53,7 @@ echo "RUNNING: QwenOFT + Qwen3.5-4B RoboTwin baseline (from scratch, no pretrain
 
 PROJECT_ROOT=/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/StarVLA_YJH
 cd "${PROJECT_ROOT}"
-export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}" # 把当前的/mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/StarVLA_YJH 加入到 PYTHONPATH 前面
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}" # Prepend the current project root to PYTHONPATH
 
 ###########################################################################################
 Framework_name=QwenOFT

@@ -1,47 +1,48 @@
 """
-通用脚本：读取 LeRobot v2.1 数据集，调用 UnifyJointAction 将 state/action 转为统一 80 维表示。
+General-purpose script: reads a LeRobot v2.1 dataset and calls UnifyJointAction to convert
+state/action into a unified 80-dimensional representation.
 
 ============================================================
-两种运行模式
+Two Running Modes
 ============================================================
 
-1. dry-run 模式 (--dry-run)
-   - 只读取数据、执行转换、打印结果摘要
-   - 不写入任何文件，不修改原始数据
-   - 用途：快速验证 modality.json 配置是否正确、转换结果是否合理
+1. Dry-run mode (--dry-run)
+   - Only reads data, performs conversion, and prints result summary
+   - Does not write any files or modify original data
+   - Purpose: quickly verify whether modality.json configuration is correct and conversion results are reasonable
 
-2. 正常模式 (不加 --dry-run)
-   - 读取数据、执行转换、打印结果摘要
-   - 将转换结果保存为 .parquet 文件到 --output-dir 指定的目录
-   - 同时生成 unified_meta.json 记录向量布局和 target 类型
-   - 如果未指定 --output-dir，默认保存到 <dataset_path>/unified_output/
-   - 不修改原始 parquet 数据
-
-============================================================
-目标表示类型（hardcoded）
-============================================================
-
-统一后的目标类型在脚本中固定为：
-  - joint state:  abs_joint   (绝对关节角)
-  - eef state:    abs_rotvec  (绝对位姿，旋转用旋转向量)
-  - joint action: abs_joint   (绝对关节角)
-  - eef action:   abs_rotvec  (绝对位姿，旋转用旋转向量)
-如需修改，直接编辑 main() 中 TARGET_* 常量。
+2. Normal mode (without --dry-run)
+   - Reads data, performs conversion, and prints result summary
+   - Saves conversion results as .parquet files to the directory specified by --output-dir
+   - Also generates unified_meta.json recording vector layout and target types
+   - If --output-dir is not specified, defaults to <dataset_path>/unified_output/
+   - Does not modify original parquet data
 
 ============================================================
-用法
+Target Representation Types (hardcoded)
+============================================================
+
+The unified target types are fixed in the script as:
+  - joint state:  abs_joint   (absolute joint angles)
+  - eef state:    abs_rotvec  (absolute pose, rotation as rotation vector)
+  - joint action: abs_joint   (absolute joint angles)
+  - eef action:   abs_rotvec  (absolute pose, rotation as rotation vector)
+To modify, edit the TARGET_* constants in main().
+
+============================================================
+Usage
 ============================================================
 
     python convert_unified.py <dataset_path> [--episodes N] [--dry-run] [--output-dir DIR]
 
-示例:
-    # dry-run: 测试前 2 个 episode，只看结果不写文件
+Examples:
+    # dry-run: test the first 2 episodes, only view results without writing files
     python convert_unified.py /path/to/dataset --episodes 2 --dry-run
 
-    # 正常模式: 转换前 5 个 episode，输出到指定目录
+    # normal mode: convert the first 5 episodes, output to a specified directory
     python convert_unified.py /path/to/dataset --episodes 5 --output-dir /tmp/unified_output
 
-    # 正常模式: 转换全部 episode，输出到数据集下的 unified_output/
+    # normal mode: convert all episodes, output to unified_output/ under the dataset
     python convert_unified.py /path/to/dataset --episodes 9999
 """
 
@@ -73,7 +74,7 @@ def load_modality(dataset_path: str) -> dict:
 
 
 def load_info(dataset_path: str) -> dict:
-    """读取 meta/info.json，返回解析后的 dict。"""
+    """Read meta/info.json and return the parsed dict."""
     info_path = os.path.join(dataset_path, "meta", "info.json")
     if not os.path.exists(info_path):
         raise FileNotFoundError(f"info.json not found: {info_path}")
@@ -82,15 +83,15 @@ def load_info(dataset_path: str) -> dict:
 
 
 def list_episodes(dataset_path: str) -> list[str]:
-    """列出数据集中所有 episode parquet 文件。
-    优先按 info.json 计算路径；若发现文件缺失（编号不连续），则回退到文件系统扫描。
+    """List all episode parquet files in the dataset.
+    Prefers computing paths from info.json; falls back to filesystem scan if files are missing (non-contiguous numbering).
     """
     info = load_info(dataset_path)
     total_episodes = info["total_episodes"]
     chunks_size = info.get("chunks_size", 1000)
     data_path_template = info.get("data_path")
 
-    # 先尝试按连续编号生成
+    # First try generating paths by contiguous numbering
     files = []
     for ep_idx in range(total_episodes):
         chunk_idx = ep_idx // chunks_size
@@ -100,7 +101,7 @@ def list_episodes(dataset_path: str) -> list[str]:
             rel_path = f"data/chunk-{chunk_idx:03d}/episode_{ep_idx:06d}.parquet"
         files.append(os.path.join(dataset_path, rel_path))
 
-    # 检查前几个文件是否存在，若有缺失则回退到文件系统扫描
+    # Check if the first few files exist; if any are missing, fall back to filesystem scan
     if files and not os.path.isfile(files[min(1, len(files) - 1)]):
         files = sorted(glob.glob(os.path.join(dataset_path, "data", "**", "episode_*.parquet"),
                                  recursive=True))
@@ -110,13 +111,14 @@ def list_episodes(dataset_path: str) -> list[str]:
     return files
 
 
-# 从parquet文件中读取数据，按照modality_cfg映射成UnifyJointAction需要的格式。
+# Read data from a parquet file and map it to the format required by UnifyJointAction according to modality_cfg.
 def extract_episode_data(parquet_path: str, modality_cfg: dict) -> tuple[dict, np.ndarray]:
     """
-    从 parquet 文件中读取数据，按照 modality_cfg 映射成 UnifyJointAction 需要的格式。
+    Read data from a parquet file and map it to the format required by UnifyJointAction
+    according to modality_cfg.
 
     Returns:
-        data dict: keys 为 "state.<unified_name>" / "action.<unified_name>"，values 为 (N, D) np.ndarray
+        data dict: keys are "state.<unified_name>" / "action.<unified_name>", values are (N, D) np.ndarray
         frame_index: (N,) int64 ndarray
     """
     table = pq.read_table(parquet_path)
@@ -149,7 +151,7 @@ def extract_episode_data(parquet_path: str, modality_cfg: dict) -> tuple[dict, n
             if arr.ndim == 1:
                 arr = arr.reshape(N, 1)
 
-            # 支持从一个大数组中按 indices 列表或 start/end 切片取子集
+            # Support extracting a subset from a large array by indices list or start/end slice
             indices = field_info.get("indices")
             col_start = field_info.get("start")
             col_end = field_info.get("end")
@@ -159,7 +161,7 @@ def extract_episode_data(parquet_path: str, modality_cfg: dict) -> tuple[dict, n
                 arr = arr[:, col_start:col_end]
 
             expected_dim = field_info.get("dim")
-            # 验证一下modality_cfg中的dim是否正确，是否和action 中的约束匹配
+            # Verify that the dim in modality_cfg is correct and matches the action constraints
             if expected_dim is not None and arr.shape[1] != expected_dim:
                 raise ValueError(
                     f"{category}.{unified_name}: expected dim={expected_dim}, "
@@ -172,7 +174,7 @@ def extract_episode_data(parquet_path: str, modality_cfg: dict) -> tuple[dict, n
 
 
 def build_apply_to(modality_cfg: dict) -> list[str]:
-    """构建 apply_to 列表：先列所有 state key，再列所有 action key。"""
+    """Build the apply_to list: list all state keys first, then all action keys."""
     keys = []
     for unified_name in modality_cfg.get("state", {}):
         keys.append(f"state.{unified_name}")
@@ -182,7 +184,7 @@ def build_apply_to(modality_cfg: dict) -> list[str]:
 
 
 def print_result(result: dict, episode_path: str):
-    """打印转换结果的摘要信息，随机采样一帧同时展示 state 和 action。"""
+    """Print a summary of the conversion result, randomly sampling one frame to show both state and action."""
     ep_name = os.path.basename(episode_path)
     unified_s = result["state.unified"]
     unified_a = result["action.unified"]
@@ -214,7 +216,7 @@ def print_result(result: dict, episode_path: str):
 
 
 def save_result(result: dict, frame_index: np.ndarray, output_dir: str, episode_name: str):
-    """将转换结果保存为 parquet 文件，包含 frame_index 和统一向量。"""
+    """Save conversion results as a parquet file, including frame_index and unified vectors."""
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, episode_name)
 
@@ -230,7 +232,7 @@ def save_result(result: dict, frame_index: np.ndarray, output_dir: str, episode_
 
 
 def save_unified_meta(output_dir: str):
-    """保存统一向量的元数据说明到 output_dir/unified_meta.json。"""
+    """Save unified vector metadata description to output_dir/unified_meta.json."""
     meta = {
         "description": "Unified state/action representation metadata",
         "unified_dim": UNIFIED_STATE_ACTION_DIM,
@@ -263,25 +265,25 @@ def save_unified_meta(output_dir: str):
     return meta_path
 
 
-# ---- 并行 worker --------------------------------------------------------
-# 模块级全局变量，fork 模式子进程自动继承
+# ---- Parallel worker --------------------------------------------------------
+# Module-level global variables, automatically inherited by child processes in fork mode
 _g_transform = None
 _g_modality_cfg = None
 _g_output_dir = None
 
 
 def _convert_one_episode(ep_path: str) -> str | None:
-    """Worker: 读取 → 转换 → 保存单个 episode，返回保存路径。
-    遇到损坏文件（如 0 字节 parquet）时跳过并返回 None。
+    """Worker: read -> convert -> save a single episode, return the saved path.
+    Skips corrupted files (e.g., 0-byte parquet) and returns None.
     """
     ep_name = os.path.basename(ep_path)
-    # 跳过 0 字节文件
+    # Skip 0-byte files
     try:
         fsize = os.path.getsize(ep_path)
     except OSError:
         fsize = -1
     if fsize <= 0:
-        print(f"[WARN] 跳过损坏文件（{fsize} bytes）: {ep_path}")
+        print(f"[WARN] Skipping corrupted file ({fsize} bytes): {ep_path}")
         return None
     try:
         data, frame_index = extract_episode_data(ep_path, _g_modality_cfg)
@@ -289,7 +291,7 @@ def _convert_one_episode(ep_path: str) -> str | None:
         saved_path = save_result(result, frame_index, _g_output_dir, ep_name)
         return saved_path
     except Exception as e:
-        print(f"[WARN] 跳过处理失败的 episode {ep_path}: {e}")
+        print(f"[WARN] Skipping failed episode {ep_path}: {e}")
         return None
 
 
@@ -301,7 +303,7 @@ TARGET_EEF_ACTION_TYPE = "abs_quat"
 
 
 """
-测试：
+Test:
 python convert_unified.py "$VLA_DATA_ROOT/BC_Z" --episodes 1 --dry-run \
     --output-dir ./output
 """
@@ -352,7 +354,7 @@ def main():
         meta_path = save_unified_meta(args.output_dir)
         print(f"Saved unified_meta.json to: {meta_path}")
 
-    # 过滤已存在的 episode
+    # Filter out already-existing episodes
     todo_paths = []
     skipped = 0
     for i in range(n_episodes):
@@ -368,14 +370,14 @@ def main():
     print(f"To process: {len(todo_paths)}, skipped (already exist): {skipped}")
 
     if args.dry_run:
-        # dry-run 模式：串行，逐个打印
+        # Dry-run mode: sequential, print one by one
         for ep_path in todo_paths:
             data, frame_index = extract_episode_data(ep_path, modality_cfg)
             result = transform.apply(data)
             print_result(result, ep_path)
         print(f"\nDone (dry-run). Processed {len(todo_paths)} episodes, skipped {skipped}.")
     else:
-        # 正常模式：multiprocessing 并行
+        # Normal mode: multiprocessing parallel
         global _g_transform, _g_modality_cfg, _g_output_dir
         _g_transform = transform
         _g_modality_cfg = modality_cfg

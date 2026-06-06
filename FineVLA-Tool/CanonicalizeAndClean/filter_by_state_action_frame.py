@@ -1,27 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-综合筛选脚本：对单个数据集（扁平模式）或含子数据集的数据集（子数据集模式）执行三项检查。
+Comprehensive filtering script: performs three checks on a single dataset (flat mode)
+or a dataset containing sub-datasets (sub-dataset mode).
 
-三项检查：
-  1. 帧数过少 —— episode 帧数 < config.DATASET_MIN_FRAME[dataset] 阈值
-  2. task 为空 —— episode 的 tasks 字段为空列表或不存在
-  3. L2 异常 —— state 与 action 轨迹的 range-normalized per-frame L2 距离超过阈值
+Three checks:
+  1. Too few frames -- episode frame count < config.DATASET_MIN_FRAME[dataset] threshold
+  2. Empty task -- episode's tasks field is an empty list or does not exist
+  3. L2 anomaly -- range-normalized per-frame L2 distance between state and action trajectories exceeds threshold
 
-模式自动检测：
-  - 扁平模式：<path>/meta/episodes.jsonl 存在 → 单数据集处理
-  - 子数据集模式：否则递归查找所有含 meta/episodes.jsonl 的叶子目录，共享 modality.json
+Mode auto-detection:
+  - Flat mode: <path>/meta/episodes.jsonl exists -> single dataset processing
+  - Sub-dataset mode: otherwise recursively find all leaf directories containing meta/episodes.jsonl, sharing modality.json
 
-用法：
+Usage:
     python filter_by_state_action_frame.py <dataset_path> [options]
 
-示例：
-    # 扁平模式
+Examples:
+    # Flat mode
     python filter_by_state_action_frame.py /path/to/Lerobot_v21/BC_Z --force-reconvert
 
-    # 子数据集模式（自动检测）
+    # Sub-dataset mode (auto-detected)
     python filter_by_state_action_frame.py /path/to/Galaxea-Open-World-Dataset --episodes 3
 
-    # 子数据集模式 - 按机器人类型
+    # Sub-dataset mode - by robot type
     python filter_by_state_action_frame.py /path/to/RoboMindV2.0/franka --episodes 5
 
     python filter_by_state_action_frame.py \
@@ -53,11 +54,11 @@ GRIPPER_SLOTS = {"left_gripper", "right_gripper"}
 
 
 # ============================================================
-# 帧数 / task 筛选
+# Frame Count / Task Filtering
 # ============================================================
 
 def _get_min_frame(dataset_key: str):
-    """根据数据集键获取 min_frame：先精确匹配，再按顶层目录名匹配。"""
+    """Get min_frame for a dataset key: first try exact match, then match by top-level directory name."""
     if dataset_key in config.DATASET_MIN_FRAME:
         return config.DATASET_MIN_FRAME[dataset_key]
     top_level = dataset_key.split("/")[0]
@@ -65,7 +66,7 @@ def _get_min_frame(dataset_key: str):
 
 
 def _tasks_empty(tasks) -> bool:
-    """判断 tasks 是否为空：None、空列表、或列表中全部为空字符串。"""
+    """Check if tasks is empty: None, empty list, or list of all empty strings."""
     if tasks is None:
         return True
     if isinstance(tasks, list):
@@ -77,7 +78,7 @@ def _tasks_empty(tasks) -> bool:
 
 
 def _find_episode_jsonl(dataset_path: str) -> str | None:
-    """在 dataset_path/meta/ 下查找 episodes.jsonl 或 episode.jsonl。"""
+    """Find episodes.jsonl or episode.jsonl under dataset_path/meta/."""
     meta_dir = os.path.join(dataset_path, "meta")
     if not os.path.isdir(meta_dir):
         return None
@@ -89,7 +90,7 @@ def _find_episode_jsonl(dataset_path: str) -> str | None:
 
 
 def _load_tasks_jsonl(dataset_path: str) -> dict:
-    """加载 tasks.jsonl，返回 {task_index: task_string} 映射。"""
+    """Load tasks.jsonl and return a {task_index: task_string} mapping."""
     tasks_file = os.path.join(dataset_path, "meta", "tasks.jsonl")
     task_map = {}
     if not os.path.isfile(tasks_file):
@@ -111,13 +112,13 @@ def _load_tasks_jsonl(dataset_path: str) -> dict:
 
 
 def _resolve_episode_tasks(obj: dict, task_map: dict):
-    """从 episode 对象解析 task 列表。
-    优先使用内联的 "tasks" 字段；若不存在则通过 "task_index" 查找 tasks.jsonl。
+    """Parse the task list from an episode object.
+    Prefers the inline "tasks" field; falls back to looking up "task_index" in tasks.jsonl if absent.
     """
     tasks = obj.get("tasks")
     if tasks is not None:
         return tasks
-    # 通过 task_index 查找
+    # Look up via task_index
     task_index = obj.get("task_index")
     if task_index is not None and task_map:
         task_text = task_map.get(task_index)
@@ -127,12 +128,12 @@ def _resolve_episode_tasks(obj: dict, task_map: dict):
 
 
 def check_frame_and_task(dataset_path: str, dataset_key: str, episodes: int = None, quiet: bool = False) -> dict:
-    """检查帧数和 task，返回 {ep_id: [reason, ...]}。
+    """Check frame count and task, return {ep_id: [reason, ...]}.
 
     Parameters
     ----------
     episodes : int, optional
-        只检查前 N 个 episode。None 表示检查全部。
+        Only check the first N episodes. None means check all.
     """
     result = {}
     min_frame = _get_min_frame(dataset_key)
@@ -140,19 +141,19 @@ def check_frame_and_task(dataset_path: str, dataset_key: str, episodes: int = No
     ep_file = _find_episode_jsonl(dataset_path)
     if ep_file is None:
         if not quiet:
-            print(f"[WARN] 未找到 episodes.jsonl，跳过帧数/task 检查")
+            print(f"[WARN] episodes.jsonl not found, skipping frame/task check")
         return result
 
-    # 加载 tasks.jsonl 用于 task_index 查找
+    # Load tasks.jsonl for task_index lookup
     task_map = _load_tasks_jsonl(dataset_path)
 
     if not quiet:
-        print(f"帧数/task 检查: {ep_file}")
-        print(f"  min_frame 阈值: {min_frame if min_frame is not None else '未设置（跳过帧数检查）'}")
+        print(f"Frame/task check: {ep_file}")
+        print(f"  min_frame threshold: {min_frame if min_frame is not None else 'not set (skipping frame check)'}")
         if episodes is not None:
-            print(f"  限制检查前 {episodes} 个 episode")
+            print(f"  limiting check to first {episodes} episodes")
         if task_map:
-            print(f"  已加载 tasks.jsonl（{len(task_map)} 条 task）")
+            print(f"  loaded tasks.jsonl ({len(task_map)} tasks)")
 
     n_frame_bad = 0
     n_task_bad = 0
@@ -168,7 +169,7 @@ def check_frame_and_task(dataset_path: str, dataset_key: str, episodes: int = No
             except json.JSONDecodeError:
                 continue
 
-            # 如果指定了 episodes 限制，只处理前 N 个
+            # If episodes limit is specified, only process the first N
             if episodes is not None and n_total >= episodes:
                 break
 
@@ -180,35 +181,35 @@ def check_frame_and_task(dataset_path: str, dataset_key: str, episodes: int = No
 
             reasons = []
             if min_frame is not None and length < min_frame:
-                reasons.append(f"frame数为{length},小于阈值{min_frame}")
+                reasons.append(f"frame count is {length}, below threshold {min_frame}")
                 n_frame_bad += 1
             if _tasks_empty(tasks):
-                reasons.append("task为空")
+                reasons.append("task is empty")
                 n_task_bad += 1
 
             if reasons:
                 result[ep_id] = reasons
 
     if not quiet:
-        print(f"  共 {n_total} 个 episode，帧数不足: {n_frame_bad}，task为空: {n_task_bad}")
+        print(f"  total {n_total} episodes, frame count insufficient: {n_frame_bad}, task empty: {n_task_bad}")
     return result
 
 
 # ============================================================
-# parquet 文件完整性检查
+# Parquet File Integrity Check
 # ============================================================
 
 def check_corrupted_parquets(dataset_path: str, episodes: int = None, quiet: bool = False) -> dict:
-    """扫描 data/ 下 episode parquet 文件，检测损坏文件（0 字节、无法读取 schema 等）。
-    episodes: 只检查前 N 个文件。None 表示全部。
-    返回 {ep_id: [reason, ...]}。
+    """Scan episode parquet files under data/, detecting corrupted files (0-byte, unreadable schema, etc.).
+    episodes: only check the first N files. None means all.
+    Returns {ep_id: [reason, ...]}.
     """
     import pyarrow.parquet as pq_check
 
     data_dir = os.path.join(dataset_path, "data")
     if not os.path.isdir(data_dir):
         if not quiet:
-            print(f"[WARN] 未找到 data/ 目录，跳过 parquet 完整性检查")
+            print(f"[WARN] data/ directory not found, skipping parquet integrity check")
         return {}
 
     parquet_files = sorted(glob_mod.glob(os.path.join(data_dir, "**", "episode_*.parquet"),
@@ -217,40 +218,40 @@ def check_corrupted_parquets(dataset_path: str, episodes: int = None, quiet: boo
     if episodes is not None and episodes < total:
         parquet_files = parquet_files[:episodes]
     if not quiet:
-        print(f"parquet 完整性检查: 检查 {len(parquet_files)}/{total} 个 parquet 文件")
+        print(f"Parquet integrity check: checking {len(parquet_files)}/{total} parquet files")
 
     result = {}
     n_corrupted = 0
     for pf in parquet_files:
         ep_name = os.path.basename(pf)
-        # 从文件名提取 episode id: episode_000118.parquet -> 118
+        # Extract episode id from filename: episode_000118.parquet -> 118
         ep_id = ep_name.replace("episode_", "").replace(".parquet", "").lstrip("0") or "0"
 
         reason = None
         try:
             fsize = os.path.getsize(pf)
         except OSError as e:
-            reason = f"parquet文件无法访问: {e}"
+            reason = f"parquet file inaccessible: {e}"
         else:
             if fsize == 0:
-                reason = "parquet文件损坏(0字节)"
+                reason = "parquet file corrupted (0 bytes)"
             else:
                 try:
                     pq_check.read_schema(pf)
                 except Exception as e:
-                    reason = f"parquet文件损坏(schema无法读取): {e}"
+                    reason = f"parquet file corrupted (schema unreadable): {e}"
 
         if reason:
             result[ep_id] = [reason]
             n_corrupted += 1
 
     if not quiet:
-        print(f"  损坏文件: {n_corrupted}")
+        print(f"  corrupted files: {n_corrupted}")
     return result
 
 
 # ============================================================
-# L2 state-action 筛选
+# L2 State-Action Filtering
 # ============================================================
 
 def _resolve_dataset_key(dataset_path: str) -> str:
@@ -269,16 +270,16 @@ def _resolve_dataset_key(dataset_path: str) -> str:
 
 
 def _normalize_slot_list(slot) -> list[str]:
-    """将 slot 配置统一为列表形式。支持字符串或列表。"""
+    """Normalize slot configuration to list form. Accepts a string or list."""
     if isinstance(slot, str):
         return [slot]
     if isinstance(slot, list):
         return slot
-    raise ValueError(f"slot 配置必须是字符串或列表，但得到: {type(slot)}")
+    raise ValueError(f"slot config must be a string or list, got: {type(slot)}")
 
 
 def _get_compare_slots(dataset_key: str):
-    """返回 (state_slots, action_slots)，均为列表形式。"""
+    """Return (state_slots, action_slots), both in list form."""
     slot_cfg = config.STATE_ACTION_COMPARE_SLOTS.get(dataset_key)
     if slot_cfg is None:
         return None
@@ -286,7 +287,7 @@ def _get_compare_slots(dataset_key: str):
     action_slots = _normalize_slot_list(slot_cfg["action_slot"])
     for s in state_slots + action_slots:
         if s in GRIPPER_SLOTS:
-            print(f"[ERROR] 配置中 {dataset_key} 使用了 gripper slot '{s}'，已跳过。", file=sys.stderr)
+            print(f"[ERROR] Config for {dataset_key} uses gripper slot '{s}', skipped.", file=sys.stderr)
             return None
     return state_slots, action_slots
 
@@ -299,11 +300,11 @@ def _ensure_unified_output(dataset_path: str, episodes: int = None, force: bool 
         if os.path.isdir(output_dir) and os.path.isfile(meta_path):
             parquets = glob_mod.glob(os.path.join(output_dir, "episode_*.parquet"))
             if parquets:
-                print(f"已有 unified_output（{len(parquets)} 个 parquet），直接复用。"
-                      f"如需补齐请加 --force-reconvert")
+                print(f"Existing unified_output ({len(parquets)} parquets), reusing directly."
+                      f" Add --force-reconvert to regenerate.")
                 return output_dir
 
-    print(f"调用 convert_unified.py 生成/补齐 unified_output...")
+    print(f"Calling convert_unified.py to generate/complete unified_output...")
     convert_script = os.path.join(SCRIPT_DIR, "convert_unified.py")
     cmd = [
         sys.executable, convert_script,
@@ -313,11 +314,11 @@ def _ensure_unified_output(dataset_path: str, episodes: int = None, force: bool 
     ]
     if episodes is not None:
         cmd += ["--episodes", str(episodes)]
-    print(f"  命令: {' '.join(cmd)}")
+    print(f"  Command: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print(f"[ERROR] convert_unified.py 失败:\n{result.stderr}", file=sys.stderr)
-        raise RuntimeError(f"convert_unified.py 失败 (exit code {result.returncode})")
+        print(f"[ERROR] convert_unified.py failed:\n{result.stderr}", file=sys.stderr)
+        raise RuntimeError(f"convert_unified.py failed (exit code {result.returncode})")
     print(result.stdout)
     return output_dir
 
@@ -334,13 +335,13 @@ def _list_unified_parquets(output_dir: str) -> list:
 
 
 def _extract_slot_arrays(parquet_path, state_ranges, action_ranges):
-    """从 unified parquet 中提取多个 slot 范围并拼接。
+    """Extract and concatenate multiple slot ranges from a unified parquet file.
 
     Parameters
     ----------
     parquet_path : str
-    state_ranges : list of (start, end) — state 各 slot 的维度范围
-    action_ranges : list of (start, end) — action 各 slot 的维度范围
+    state_ranges : list of (start, end) -- dimension ranges for state slots
+    action_ranges : list of (start, end) -- dimension ranges for action slots
     """
     table = pq.read_table(parquet_path)
     df = table.to_pandas()
@@ -352,7 +353,7 @@ def _extract_slot_arrays(parquet_path, state_ranges, action_ranges):
     mask_a_all = np.array(df["mask_action"].tolist(), dtype=bool)
     frame_indices = df["frame_index"].values.astype(int)
 
-    # 拼接多个 slot 范围
+    # Concatenate multiple slot ranges
     state_parts, action_parts = [], []
     mask_s_parts, mask_a_parts = [], []
     for s_start, s_end in state_ranges:
@@ -383,7 +384,7 @@ def _process_episode_worker(parquet_path, state_ranges, action_ranges):
         episode_name, state_valid, action_valid, frame_indices = \
             _extract_slot_arrays(parquet_path, state_ranges, action_ranges)
     except Exception as e:
-        print(f"[WARN] 跳过损坏的 unified parquet {parquet_path}: {e}")
+        print(f"[WARN] Skipping corrupted unified parquet {parquet_path}: {e}")
         return {
             "episode_name": episode_name,
             "valid_frames": 0,
@@ -412,7 +413,7 @@ def process_episode_local(parquet_path, state_ranges, action_ranges):
         episode_name, state_valid, action_valid, frame_indices = \
             _extract_slot_arrays(parquet_path, state_ranges, action_ranges)
     except Exception as e:
-        print(f"[WARN] 跳过损坏的 unified parquet {parquet_path}: {e}")
+        print(f"[WARN] Skipping corrupted unified parquet {parquet_path}: {e}")
         return {
             "episode_name": episode_name,
             "valid_frames": 0,
@@ -485,58 +486,58 @@ def plot_episode(ep_result: dict, state_slot: str, action_slot: str, plot_dir: s
 
 def check_l2(dataset_path: str, dataset_key: str, episodes: int, threshold: float,
               force_reconvert: bool, plot: bool, plot_dir: str) -> tuple[dict, dict]:
-    """执行 L2 检查，返回 (l2_reasons, l2_report_info)。
+    """Perform L2 check, return (l2_reasons, l2_report_info).
     l2_reasons: {ep_id: [reason, ...]}
-    l2_report_info: 详细报告 dict（统计信息等）
+    l2_report_info: detailed report dict (statistics, etc.)
     """
     slots = _get_compare_slots(dataset_key)
     if slots is None:
-        print(f"数据集 {dataset_key} 未配置 state-action 对比 slot 或配置为 None，跳过 L2 检查。")
+        print(f"Dataset {dataset_key} has no state-action comparison slot configured or config is None, skipping L2 check.")
         return {}, {}
 
-    # 检查 modality.json 是否存在
+    # Check if modality.json exists
     modality_path = os.path.join(dataset_path, "meta", "modality.json")
     if not os.path.isfile(modality_path):
-        print(f"[WARN] 数据集缺少 meta/modality.json，无法执行 L2 检查。")
-        print(f"       如需执行 L2 检查，请先创建 modality.json 文件。")
+        print(f"[WARN] Dataset missing meta/modality.json, cannot perform L2 check.")
+        print(f"       To perform L2 check, please create the modality.json file first.")
         return {}, {}
 
     state_slots, action_slots = slots
     state_slot_label = "+".join(state_slots)
     action_slot_label = "+".join(action_slots)
-    print(f"\nL2 检查: state.{state_slot_label} vs action.{action_slot_label}")
-    print(f"  阈值: {threshold if threshold is not None else '无（仅记录统计）'}")
+    print(f"\nL2 check: state.{state_slot_label} vs action.{action_slot_label}")
+    print(f"  Threshold: {threshold if threshold is not None else 'none (statistics only)'}")
 
-    # 确保 unified_output 存在
+    # Ensure unified_output exists
     output_dir = _ensure_unified_output(dataset_path, episodes, force=force_reconvert)
 
-    # 读取 unified_meta.json
+    # Read unified_meta.json
     slot_layout = _load_unified_meta(output_dir)
     for s in state_slots:
         if s not in slot_layout:
-            raise RuntimeError(f"state_slot '{s}' 不在 slot_layout 中。可用: {list(slot_layout.keys())}")
+            raise RuntimeError(f"state_slot '{s}' not in slot_layout. Available: {list(slot_layout.keys())}")
     for s in action_slots:
         if s not in slot_layout:
-            raise RuntimeError(f"action_slot '{s}' 不在 slot_layout 中。可用: {list(slot_layout.keys())}")
+            raise RuntimeError(f"action_slot '{s}' not in slot_layout. Available: {list(slot_layout.keys())}")
 
-    # 构建多 slot 的维度范围列表
+    # Build dimension range lists for multiple slots
     state_ranges = [(slot_layout[s]["start"], slot_layout[s]["end"]) for s in state_slots]
     action_ranges = [(slot_layout[s]["start"], slot_layout[s]["end"]) for s in action_slots]
 
     for s, (start, end) in zip(state_slots, state_ranges):
-        print(f"  State slot [{s}]: 维度 [{start}:{end})")
+        print(f"  State slot [{s}]: dims [{start}:{end})")
     for s, (start, end) in zip(action_slots, action_ranges):
-        print(f"  Action slot [{s}]: 维度 [{start}:{end})")
+        print(f"  Action slot [{s}]: dims [{start}:{end})")
 
-    # 准备 episode 列表
+    # Prepare episode list
     parquet_files = _list_unified_parquets(output_dir)
     n_episodes = min(episodes, len(parquet_files)) if episodes is not None else len(parquet_files)
     parquet_files = parquet_files[:n_episodes]
-    print(f"  共 {n_episodes} 个 episode 待处理")
+    print(f"  Total {n_episodes} episodes to process")
 
-    # 并行计算 L2
+    # Parallel L2 computation
     num_workers = min(config.NUM_WORKERS, n_episodes)
-    print(f"  并行 worker 数: {num_workers}")
+    print(f"  Parallel workers: {num_workers}")
 
     worker_fn = partial(_process_episode_worker,
                         state_ranges=state_ranges, action_ranges=action_ranges)
@@ -545,9 +546,9 @@ def check_l2(dataset_path: str, dataset_key: str, episodes: int, threshold: floa
     with mp.Pool(processes=num_workers) as pool:
         results = pool.map(worker_fn, parquet_files)
     t_l2 = time.time() - t_start
-    print(f"  L2 并行计算完成，耗时 {t_l2:.1f}s（{n_episodes} episodes, {num_workers} workers）")
+    print(f"  L2 parallel computation done, took {t_l2:.1f}s ({n_episodes} episodes, {num_workers} workers)")
 
-    # 汇总
+    # Summary
     l2_scores = []
     flagged_episodes = []
     for i, r in enumerate(results):
@@ -562,25 +563,25 @@ def check_l2(dataset_path: str, dataset_key: str, episodes: int, threshold: floa
             print(f"    [{i+1}/{n_episodes}] {r['episode_name']}: "
                   f"L2={score:.4f}, valid_frames={r['valid_frames']}{flag}")
         else:
-            print(f"    [{i+1}/{n_episodes}] {r['episode_name']}: 无有效帧（mask 不满足）")
+            print(f"    [{i+1}/{n_episodes}] {r['episode_name']}: no valid frames (mask not satisfied)")
 
-    # 绘图
+    # Plotting
     if plot:
-        print(f"\n  开始绘图...")
+        print(f"\n  Starting plots...")
         t_plot = time.time()
         for i, pf in enumerate(parquet_files):
             ep_local = process_episode_local(pf, state_ranges, action_ranges)
             png_path = plot_episode(ep_local, state_slot_label, action_slot_label, plot_dir)
             if png_path:
                 print(f"    [{i+1}/{n_episodes}] {os.path.basename(pf)} -> {png_path}")
-        print(f"  绘图完成，耗时 {time.time() - t_plot:.1f}s")
+        print(f"  Plotting done, took {time.time() - t_plot:.1f}s")
 
-    # 统计（过滤掉 inf，避免破坏均值/分位数）
+    # Statistics (filter out inf to avoid skewing mean/percentiles)
     l2_arr = np.array(l2_scores)
     l2_finite = l2_arr[np.isfinite(l2_arr)]
     n_inf = int(np.sum(~np.isfinite(l2_arr)))
     if n_inf > 0:
-        print(f"  注意: {n_inf} 个 episode 的 L2 为 inf（state/action 一方静止另一方不静止）")
+        print(f"  Note: {n_inf} episodes have L2 = inf (one side stationary while the other is not)")
     stats = {}
     if len(l2_finite) > 0:
         stats = {
@@ -594,10 +595,10 @@ def check_l2(dataset_path: str, dataset_key: str, episodes: int, threshold: floa
             "p99_l2": float(np.percentile(l2_finite, 99)),
             "n_inf": n_inf,
         }
-        print(f"  L2 统计: mean={stats['mean_l2']:.4f}, median={stats['median_l2']:.4f}, "
+        print(f"  L2 stats: mean={stats['mean_l2']:.4f}, median={stats['median_l2']:.4f}, "
               f"p90={stats['p90_l2']:.4f}, p95={stats['p95_l2']:.4f}, max={stats['max_l2']:.4f}")
 
-    # 收集 L2 原因
+    # Collect L2 reasons
     l2_reasons = {}
     for r in results:
         ep_name = r["episode_name"]
@@ -606,18 +607,18 @@ def check_l2(dataset_path: str, dataset_key: str, episodes: int, threshold: floa
 
         reasons = []
         if r.get("corrupted"):
-            reasons.append("parquet文件损坏(unified_output中文件无法读取)")
+            reasons.append("parquet file corrupted (unified_output file unreadable)")
         elif r["valid_frames"] == 0 or score is None:
-            reasons.append("无有效帧(state/action mask不满足)")
+            reasons.append("no valid frames (state/action mask not satisfied)")
         elif np.isnan(score):
-            reasons.append(f"帧数过少(valid_frames={r['valid_frames']}),无法计算L2")
+            reasons.append(f"too few frames (valid_frames={r['valid_frames']}), cannot compute L2")
         elif threshold is not None and score > threshold:
-            reasons.append(f"L2={score:.4f},超过阈值{threshold}")
+            reasons.append(f"L2={score:.4f}, exceeds threshold {threshold}")
 
         if reasons:
             l2_reasons[ep_id] = reasons
 
-    # 详细报告
+    # Detailed report
     report_info = {
         "state_slot": state_slots if len(state_slots) > 1 else state_slots[0],
         "action_slot": action_slots if len(action_slots) > 1 else action_slots[0],
@@ -641,16 +642,16 @@ def check_l2(dataset_path: str, dataset_key: str, episodes: int, threshold: floa
 
 
 # ============================================================
-# 统计摘要计算（扁平模式和子数据集模式共用）
+# Summary Statistics (shared by flat and sub-dataset modes)
 # ============================================================
 
 def _compute_summary(merged: dict, dataset_key: str, dataset_path: str,
                      threshold, l2_report_info: dict) -> dict:
-    """根据合并后的 reasons 计算统计摘要。"""
+    """Compute summary statistics from the merged reasons."""
     n_frame_task_only = sum(1 for v in merged.values()
                             if all("frame" in r or "task" in r for r in v))
     n_l2_only = sum(1 for v in merged.values()
-                     if all("L2" in r or "无有效帧" in r or "无法计算" in r for r in v))
+                     if all("L2" in r or "no valid frames" in r or "cannot compute" in r for r in v))
     n_both = len(merged) - n_frame_task_only - n_l2_only
 
     n_frame_bad = sum(1 for v in merged.values()
@@ -658,9 +659,9 @@ def _compute_summary(merged: dict, dataset_key: str, dataset_path: str,
     n_task_bad = sum(1 for v in merged.values()
                      if any("task" in r for r in v))
     n_l2_bad = sum(1 for v in merged.values()
-                    if any("L2" in r or "无有效帧" in r or "无法计算" in r for r in v))
+                    if any("L2" in r or "no valid frames" in r or "cannot compute" in r for r in v))
     n_corrupted = sum(1 for v in merged.values()
-                      if any("parquet文件损坏" in r or "parquet文件无法访问" in r for r in v))
+                      if any("parquet file corrupted" in r or "parquet file inaccessible" in r for r in v))
 
     summary = {
         "dataset": dataset_key,
@@ -683,7 +684,7 @@ def _compute_summary(merged: dict, dataset_key: str, dataset_path: str,
 
 
 def _merge_reasons(*reason_dicts) -> dict:
-    """合并多个 reasons dict（帧数/task、L2、parquet 损坏等）。"""
+    """Merge multiple reasons dicts (frame/task, L2, parquet corruption, etc.)."""
     all_ids = set()
     for rd in reason_dicts:
         all_ids |= set(rd.keys())
@@ -699,15 +700,15 @@ def _merge_reasons(*reason_dicts) -> dict:
 
 
 # ============================================================
-# 扁平模式（原有逻辑）
+# Flat Mode (original logic)
 # ============================================================
 
 def _run_flat_mode(dataset_path: str, args):
-    """扁平数据集模式：顶层有 meta/episodes.jsonl。"""
+    """Flat dataset mode: top-level has meta/episodes.jsonl."""
     plot = args.plot or config.PLOT
     dataset_key = _resolve_dataset_key(dataset_path)
 
-    # 确定 L2 阈值
+    # Determine L2 threshold
     if args.threshold is not None:
         threshold = args.threshold
     else:
@@ -715,34 +716,34 @@ def _run_flat_mode(dataset_path: str, args):
             dataset_key, config.DEFAULT_L2_THRESHOLD)
 
     print(f"{'='*60}")
-    print(f"数据集: {dataset_path}")
-    print(f"配置 key: {dataset_key}")
-    print(f"模式: 扁平")
-    print(f"L2 阈值: {threshold if threshold is not None else '无（仅生成报告）'}")
+    print(f"Dataset: {dataset_path}")
+    print(f"Config key: {dataset_key}")
+    print(f"Mode: flat")
+    print(f"L2 threshold: {threshold if threshold is not None else 'none (report only)'}")
     print(f"{'='*60}")
 
-    # 1. parquet 完整性检查
-    print(f"\n--- 第 1 步: parquet 完整性检查 ---")
+    # 1. Parquet integrity check
+    print(f"\n--- Step 1: Parquet integrity check ---")
     corrupted_reasons = check_corrupted_parquets(dataset_path, episodes=args.episodes)
 
-    # 2. 帧数 / task 检查
-    print(f"\n--- 第 2 步: 帧数 / task 检查 ---")
+    # 2. Frame count / task check
+    print(f"\n--- Step 2: Frame count / task check ---")
     frame_task_reasons = check_frame_and_task(dataset_path, dataset_key, episodes=args.episodes)
 
-    # 3. L2 检查
-    print(f"\n--- 第 3 步: L2 state-action 检查 ---")
+    # 3. L2 check
+    print(f"\n--- Step 3: L2 state-action check ---")
     plot_dir = args.plot_dir or os.path.join(SCRIPT_DIR, "plots", dataset_key)
     l2_reasons, l2_report_info = check_l2(
         dataset_path, dataset_key, args.episodes, threshold,
         args.force_reconvert, plot, plot_dir)
 
-    # 4. 合并
-    print(f"\n--- 第 4 步: 合并结果 ---")
+    # 4. Merge
+    print(f"\n--- Step 4: Merge results ---")
     merged = _merge_reasons(corrupted_reasons, frame_task_reasons, l2_reasons)
     summary = _compute_summary(merged, dataset_key, dataset_path,
                                threshold, l2_report_info)
 
-    # 5. 写入报告
+    # 5. Write report
     safe_key = dataset_key.replace(os.sep, "_").replace("/", "_")
     filter_report_path = os.path.join(SCRIPT_DIR, f"{safe_key}_filter_report.json")
     report = {
@@ -752,41 +753,41 @@ def _run_flat_mode(dataset_path: str, args):
     with open(filter_report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
 
-    # 6. L2 详细报告
+    # 6. L2 detailed report
     if l2_report_info:
         l2_detail_path = os.path.join(SCRIPT_DIR, "state_action_diff_report.json")
         l2_report_info["dataset"] = dataset_key
         l2_report_info["dataset_path"] = dataset_path
         with open(l2_detail_path, "w", encoding="utf-8") as f:
             json.dump(l2_report_info, f, ensure_ascii=False, indent=2)
-        print(f"L2 详细报告: {l2_detail_path}")
+        print(f"L2 detailed report: {l2_detail_path}")
 
-    # 7. 打印摘要
+    # 7. Print summary
     bd = summary["breakdown"]
     print(f"\n{'='*60}")
-    print(f"筛选报告: {filter_report_path}")
-    print(f"共 {summary['total_problem_episodes']} 个问题 episode:")
-    print(f"  parquet损坏: {bd['parquet_corrupted']}")
-    print(f"  帧数不足: {bd['frame_too_short']}")
-    print(f"  task为空: {bd['task_empty']}")
-    print(f"  L2异常:  {bd['l2_abnormal']}")
+    print(f"Filter report: {filter_report_path}")
+    print(f"Total {summary['total_problem_episodes']} problem episodes:")
+    print(f"  parquet corrupted: {bd['parquet_corrupted']}")
+    print(f"  frame count insufficient: {bd['frame_too_short']}")
+    print(f"  task empty: {bd['task_empty']}")
+    print(f"  L2 anomaly:  {bd['l2_abnormal']}")
     print(f"  ---")
-    print(f"  仅帧数/task 问题: {summary['frame_task_only']}")
-    print(f"  仅 L2 问题:      {summary['l2_only']}")
-    print(f"  多种问题:         {summary['both']}")
+    print(f"  frame/task only: {summary['frame_task_only']}")
+    print(f"  L2 only:        {summary['l2_only']}")
+    print(f"  multiple issues: {summary['both']}")
     print(f"{'='*60}")
     if plot:
-        print(f"曲线图目录: {plot_dir}")
+        print(f"Plot directory: {plot_dir}")
 
 
 # ============================================================
-# 子数据集模式
+# Sub-dataset Mode
 # ============================================================
 
 
 def _discover_leaf_datasets(root_path: str) -> list[str]:
-    """递归查找 root_path 下所有含 meta/episodes.jsonl 的叶子数据集目录。
-    跳过 SKIP_DIRS 和 meta 目录。
+    """Recursively find all leaf dataset directories under root_path that contain meta/episodes.jsonl.
+    Skips SKIP_DIRS and meta directories.
     """
     skip = config.SKIP_DIRS | {"meta"}
     leaves = []
@@ -802,11 +803,11 @@ def _discover_leaf_datasets(root_path: str) -> list[str]:
             full = os.path.join(path, entry)
             if not os.path.isdir(full):
                 continue
-            # 检查这个目录是否是叶子数据集
+            # Check if this directory is a leaf dataset
             if _find_episode_jsonl(full) is not None:
                 leaves.append(full)
             else:
-                # 继续递归
+                # Continue recursing
                 _walk(full)
 
     _walk(root_path)
@@ -817,37 +818,37 @@ def _discover_leaf_datasets(root_path: str) -> list[str]:
 def _process_one_subdataset(leaf_path: str, dataset_key: str, episodes: int,
                             threshold, force_reconvert: bool, plot: bool,
                             plot_dir: str) -> dict:
-    """处理单个子数据集，返回结果 dict。
-    返回: {"summary": {...}, "episodes": {...}, "l2_scores": [...]}
+    """Process a single sub-dataset, return result dict.
+    Returns: {"summary": {...}, "episodes": {...}, "l2_scores": [...]}
     """
     leaf_name = os.path.basename(leaf_path)
 
-    # parquet 完整性检查
+    # Parquet integrity check
     corrupted_reasons = check_corrupted_parquets(leaf_path, episodes=episodes, quiet=True)
 
-    # 帧数 / task 检查
+    # Frame count / task check
     frame_task_reasons = check_frame_and_task(leaf_path, dataset_key, episodes=episodes, quiet=True)
 
-    # L2 检查
+    # L2 check
     l2_reasons, l2_report_info = check_l2(
         leaf_path, dataset_key, episodes, threshold,
         force_reconvert, plot, plot_dir)
 
-    # 合并
+    # Merge
     merged = _merge_reasons(corrupted_reasons, frame_task_reasons, l2_reasons)
 
-    # 获取总 episode 数
+    # Get total episode count
     ep_file = _find_episode_jsonl(leaf_path)
     total_episodes = 0
     if ep_file:
         with open(ep_file, "r", encoding="utf-8") as f:
             total_episodes = sum(1 for line in f if line.strip())
 
-    # 统计
+    # Statistics
     summary = _compute_summary(merged, leaf_name, leaf_path, threshold, l2_report_info)
     summary["total_episodes"] = total_episodes
 
-    # 收集所有 L2 分数用于全局统计
+    # Collect all L2 scores for global statistics
     all_l2_scores = []
     if l2_report_info.get("episodes"):
         for ep in l2_report_info["episodes"]:
@@ -863,38 +864,38 @@ def _process_one_subdataset(leaf_path: str, dataset_key: str, episodes: int,
 
 
 def _run_subdataset_mode(dataset_path: str, args):
-    """子数据集模式：递归查找叶子数据集，逐个处理后汇总。"""
+    """Sub-dataset mode: recursively find leaf datasets, process each, then aggregate."""
     plot = args.plot or config.PLOT
     dataset_key = _resolve_dataset_key(dataset_path)
 
-    # 确定 L2 阈值
+    # Determine L2 threshold
     if args.threshold is not None:
         threshold = args.threshold
     else:
         threshold = config.DATASET_L2_THRESHOLD.get(
             dataset_key, config.DEFAULT_L2_THRESHOLD)
 
-    # 发现叶子数据集
+    # Discover leaf datasets
     leaves = _discover_leaf_datasets(dataset_path)
     if not leaves:
-        print(f"[ERROR] 在 {dataset_path} 下未发现任何含 meta/episodes.jsonl 的子数据集。", file=sys.stderr)
+        print(f"[ERROR] No sub-datasets containing meta/episodes.jsonl found under {dataset_path}.", file=sys.stderr)
         sys.exit(1)
 
-    # 限制子数据集数量（用于测试）
+    # Limit sub-dataset count (for testing)
     total_leaves = len(leaves)
     if args.max_subsets_num is not None and args.max_subsets_num < total_leaves:
         leaves = leaves[:args.max_subsets_num]
 
     print(f"{'='*60}")
-    print(f"数据集: {dataset_path}")
-    print(f"配置 key: {dataset_key}")
-    print(f"模式: 子数据集")
-    print(f"发现 {total_leaves} 个子数据集" +
-          (f"，本次处理前 {len(leaves)} 个" if len(leaves) < total_leaves else ""))
-    print(f"L2 阈值: {threshold if threshold is not None else '无（仅生成报告）'}")
+    print(f"Dataset: {dataset_path}")
+    print(f"Config key: {dataset_key}")
+    print(f"Mode: sub-dataset")
+    print(f"Found {total_leaves} sub-datasets" +
+          (f", processing first {len(leaves)} this run" if len(leaves) < total_leaves else ""))
+    print(f"L2 threshold: {threshold if threshold is not None else 'none (report only)'}")
     print(f"{'='*60}")
 
-    # 逐个处理子数据集
+    # Process sub-datasets one by one
     subdatasets_results = {}
     all_l2_scores_global = []
     total_corrupted = 0
@@ -910,10 +911,10 @@ def _run_subdataset_mode(dataset_path: str, args):
         leaf_name = os.path.basename(leaf_path)
         print(f"\n[{idx+1}/{len(leaves)}] {leaf_name}")
 
-        # 检查叶子数据集是否有 modality.json
+        # Check if the leaf dataset has modality.json
         leaf_modality = os.path.join(leaf_path, "meta", "modality.json")
         if not os.path.isfile(leaf_modality):
-            print(f"  [SKIP] 缺少 meta/modality.json，跳过")
+            print(f"  [SKIP] Missing meta/modality.json, skipping")
             n_failed += 1
             continue
 
@@ -944,18 +945,18 @@ def _run_subdataset_mode(dataset_path: str, args):
             total_episodes_global += sub_summary.get("total_episodes", 0)
             n_processed += 1
 
-            # 简洁进度
-            print(f"  -> {n_prob} 个问题 episode"
-                  f" (损坏:{sub_bd['parquet_corrupted']}, 帧数:{sub_bd['frame_too_short']},"
+            # Brief progress
+            print(f"  -> {n_prob} problem episodes"
+                  f" (corrupted:{sub_bd['parquet_corrupted']}, frames:{sub_bd['frame_too_short']},"
                   f" task:{sub_bd['task_empty']}, L2:{sub_bd['l2_abnormal']})"
-                  f"  共 {sub_summary.get('total_episodes', '?')} 个 episode")
+                  f"  total {sub_summary.get('total_episodes', '?')} episodes")
 
         except Exception as e:
-            print(f"  [ERROR] 处理失败: {e}")
+            print(f"  [ERROR] Processing failed: {e}")
             n_failed += 1
             continue
 
-    # 全局 L2 统计
+    # Global L2 statistics
     global_l2_stats = {}
     if all_l2_scores_global:
         l2_arr = np.array(all_l2_scores_global)
@@ -970,7 +971,7 @@ def _run_subdataset_mode(dataset_path: str, args):
             "p99_l2": float(np.percentile(l2_arr, 99)),
         }
 
-    # 全局摘要
+    # Global summary
     global_summary = {
         "dataset": dataset_key,
         "dataset_path": dataset_path,
@@ -991,7 +992,7 @@ def _run_subdataset_mode(dataset_path: str, args):
     if global_l2_stats:
         global_summary["l2_statistics"] = global_l2_stats
 
-    # 写入报告
+    # Write report
     filter_report_path = os.path.join(SCRIPT_DIR, f"{dataset_key}_filter_report.json")
     report = {
         "summary": global_summary,
@@ -1000,18 +1001,18 @@ def _run_subdataset_mode(dataset_path: str, args):
     with open(filter_report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
 
-    # 打印全局摘要
+    # Print global summary
     print(f"\n{'='*60}")
-    print(f"筛选报告: {filter_report_path}")
-    print(f"子数据集: {n_processed} 成功, {n_failed} 失败 (共 {len(leaves)} 个)")
-    print(f"总 episode 数: {total_episodes_global}")
-    print(f"共 {total_problem_eps} 个问题 episode:")
-    print(f"  parquet损坏: {total_corrupted}")
-    print(f"  帧数不足: {total_frame_bad}")
-    print(f"  task为空: {total_task_bad}")
-    print(f"  L2异常:  {total_l2_bad}")
+    print(f"Filter report: {filter_report_path}")
+    print(f"Sub-datasets: {n_processed} succeeded, {n_failed} failed (total {len(leaves)})")
+    print(f"Total episodes: {total_episodes_global}")
+    print(f"Total {total_problem_eps} problem episodes:")
+    print(f"  parquet corrupted: {total_corrupted}")
+    print(f"  frame count insufficient: {total_frame_bad}")
+    print(f"  task empty: {total_task_bad}")
+    print(f"  L2 anomaly:  {total_l2_bad}")
     if global_l2_stats:
-        print(f"  L2 全局统计: mean={global_l2_stats['mean_l2']:.4f}, "
+        print(f"  L2 global stats: mean={global_l2_stats['mean_l2']:.4f}, "
               f"median={global_l2_stats['median_l2']:.4f}, "
               f"p90={global_l2_stats['p90_l2']:.4f}, "
               f"p95={global_l2_stats['p95_l2']:.4f}, "
@@ -1020,36 +1021,36 @@ def _run_subdataset_mode(dataset_path: str, args):
 
 
 # ============================================================
-# main: 自动检测模式
+# main: Auto-detect Mode
 # ============================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="综合筛选：帧数 + task + L2(state, action)，输出 {数据集}_filter_report.json。"
-                    "自动检测扁平/子数据集模式。")
-    parser.add_argument("dataset_path", help="LeRobot v2.1 数据集路径（扁平或含子数据集的父目录）")
+        description="Comprehensive filtering: frame count + task + L2(state, action), outputs {dataset}_filter_report.json. "
+                    "Auto-detects flat/sub-dataset mode.")
+    parser.add_argument("dataset_path", help="LeRobot v2.1 dataset path (flat or parent directory containing sub-datasets)")
     parser.add_argument("--episodes", type=int, default=None,
-                        help="处理的 episode 数量（默认: 全部）。子数据集模式下限制每个子数据集的 episode 数")
+                        help="Number of episodes to process (default: all). In sub-dataset mode, limits per sub-dataset")
     parser.add_argument("--threshold", type=float, default=None,
-                        help="L2 距离阈值，超过则标记为异常（覆盖 config 中该数据集的阈值）")
+                        help="L2 distance threshold; exceeding marks as anomalous (overrides the dataset's config threshold)")
     parser.add_argument("--plot", action="store_true",
-                        help="是否为每个 episode 输出 state vs action 对比曲线图")
+                        help="Output state vs action comparison plots for each episode")
     parser.add_argument("--plot-dir", type=str, default=None,
-                        help="曲线图输出目录（默认: Filter/plots/<dataset_key>/）")
+                        help="Plot output directory (default: Filter/plots/<dataset_key>/)")
     parser.add_argument("--force-reconvert", action="store_true",
-                        help="强制重新生成 unified_output（增量模式：跳过已有 parquet，只补齐缺失的）")
+                        help="Force regenerate unified_output (incremental: skips existing parquets, only fills in missing ones)")
     parser.add_argument("--max-subsets-num", type=int, default=None,
-                        help="子数据集模式下最多处理的子数据集数量（默认: 全部）。用于快速测试")
+                        help="Max number of sub-datasets to process in sub-dataset mode (default: all). For quick testing")
     args = parser.parse_args()
 
     dataset_path = args.dataset_path.rstrip("/")
 
-    # 自动检测模式
+    # Auto-detect mode
     if _find_episode_jsonl(dataset_path) is not None:
-        # 扁平模式
+        # Flat mode
         _run_flat_mode(dataset_path, args)
     else:
-        # 子数据集模式
+        # Sub-dataset mode
         _run_subdataset_mode(dataset_path, args)
 
 

@@ -90,7 +90,7 @@ def calculate_dataset_statistics(parquet_paths: list[Path]) -> dict:
         if "task_info" in le_modality:
             continue
         print(f"Computing statistics for {le_modality}...")
-        # 检查数据是否为空或无效
+        # Check if data is empty or invalid
         try:
             np_data = np.vstack(
                 [np.asarray(x, dtype=np.float32) for x in all_low_dim_data[le_modality]]
@@ -450,7 +450,7 @@ class LeRobotSingleDataset(Dataset):
                     }
                     self.trajectory_ids_to_metadata[trajectory_ids[-1]] = episode_meta
 
-            # 这里应该可以直接读取到 save index 信息
+            # Should be able to directly read the saved index info here
             return np.array(trajectory_ids), np.array(trajectory_lengths)
 
     def _get_all_steps(self) -> list[tuple[int, int]]:
@@ -729,9 +729,9 @@ class LeRobotSingleDataset(Dataset):
         elif self._lerobot_version == "v3.0":
             tasks_path = self.dataset_path / LE_ROBOT3_TASKS_FILENAME
             df = pd.read_parquet(tasks_path)
-            df = df.reset_index()  # 把索引变成一列，列名通常为 'index'
-            df = df.rename(columns={'index': 'task'})  # 把 'index' 列重命名为 'task'
-            df = df[['task_index', 'task']]  # 调整列顺序
+            df = df.reset_index()  # Convert index to a column, column name is usually 'index'
+            df = df.rename(columns={'index': 'task'})  # Rename 'index' column to 'task'
+            df = df[['task_index', 'task']]  # Adjust column order
             return df
 
     def _load_fine_grained_instructions(self) -> dict:

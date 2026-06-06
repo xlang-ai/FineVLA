@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-从 results_two_stage / results_by_task 中收集所有子数据集的 cluster_representation，
-对每个 cluster 的代表性 episode 读取完整元信息（视频路径、instruction、duration、steps 等），
-生成与 all_samples.jsonl 相同格式的记录。
+Collect cluster_representation from results_two_stage / results_by_task for all sub-datasets.
+For each cluster's representative episode, read full metadata (video paths, instruction, duration, steps, etc.)
+and generate records in the same format as all_samples.jsonl.
 
-输出为扁平 JSON 数组 [...] 。
+Output is a flat JSON array [...].
 
-用法:
+Usage:
     python collect_cluster_representation.py \
         --results_root ./results_two_stage \
         --datasets Galaxea RDT \
@@ -16,7 +16,7 @@ python collect_cluster_representation.py --results_root ./results_by_task --data
 python collect_cluster_representation.py --results_root ./results_by_task --datasets RT-1 --output cluster_representation_summary_RT-1.json --workers 32
 python collect_cluster_representation.py --results_root ./results_by_task --datasets RH20T-RoboInter --output cluster_representation_summary_RH20T-RoboInter.json
 python collect_cluster_representation.py --results_root ./results_by_task --datasets droid_RoboInter --output cluster_representation_summary_droid_RoboInter.json
-python collect_cluster_representation.py --results_root ./results_two_stage --datasets Galaxea --output cluster_representation_summary_Galaxea.json 
+python collect_cluster_representation.py --results_root ./results_two_stage --datasets Galaxea --output cluster_representation_summary_Galaxea.json
 python collect_cluster_representation.py --results_root ./results_two_stage --datasets RoboCOIN --output cluster_representation_summary_RoboCOIN.json --workers 32
 python collect_cluster_representation.py --results_root ./results_two_stage --datasets RoboCOIN_add0130 --output cluster_representation_summary_RoboCOIN_add0130.json --workers 32
 python collect_cluster_representation.py --results_root ./results_two_stage --datasets RoboCOIN_add1201 --output cluster_representation_summary_RoboCOIN_add1201.json --workers 32
@@ -24,7 +24,7 @@ python collect_cluster_representation.py --results_root ./results_two_stage --da
 python collect_cluster_representation.py --results_root ./results_robomind_v2 --datasets RoboMindV2.0 --output cluster_representation_summary_RoboMindV2.0.json
 
 
-# 开启并行跑Galaxea
+# Run Galaxea in parallel
   python collect_cluster_representation.py \
       --results_root ./results_two_stage \
       --datasets Galaxea \
@@ -65,7 +65,7 @@ from utils.sample_all import (
 _DATA_ROOT = os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21")
 ROOT_DIR = Path(_DATA_ROOT)
 
-# config.py dataset_name → (sample_all 的 dataset_label, id_prefix, 处理类型)
+# config.py dataset_name -> (sample_all's dataset_label, id_prefix, processing type)
 DATASET_INFO: dict[str, dict] = {
     "Galaxea":         {"label": "galaxea_open_world", "prefix": "galaxea",      "type": "galaxea"},
     "RDT":             {"label": "rdt",                "prefix": "rdt",           "type": "simple"},
@@ -87,13 +87,13 @@ DATASET_INFO: dict[str, dict] = {
 
 
 class SubdatasetMetaCache:
-    """缓存子数据集的 info / episodes / task_map，同一子数据集只读取一次。"""
+    """Cache sub-dataset info / episodes / task_map; each sub-dataset is read only once."""
 
     def __init__(self):
         self._cache: dict[str, tuple] = {}
 
     def get(self, subdatasets_root: str):
-        """返回 (info, episodes, task_map, error_reason)。"""
+        """Return (info, episodes, task_map, error_reason)."""
         if subdatasets_root in self._cache:
             return self._cache[subdatasets_root]
 
@@ -136,13 +136,13 @@ def find_episode(episodes: list[dict], episode_index: int) -> dict | None:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  Galaxea 专用：从 parquet 提取 steps + instruction
+#  Galaxea-specific: Extract steps + instruction from parquet
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _galaxea_episode_extra(
     task_path: Path, info: dict, ep: dict, task_map: dict[int, str],
 ) -> dict:
-    """返回 Galaxea episode 的 steps / instruction / step_source 等额外字段。"""
+    """Return extra fields (steps / instruction / step_source) for a Galaxea episode."""
     ei = ep["episode_index"]
     chunks_size = info.get("chunks_size", 1000)
     data_tpl = info.get("data_path", "")
@@ -175,7 +175,7 @@ def _galaxea_episode_extra(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  AgiBotWorld 专用：从 episode 的 action_config 提取 steps
+#  AgiBotWorld-specific: Extract steps from episode's action_config
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _agibotworld_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
@@ -190,13 +190,13 @@ def _agibotworld_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  RoboInter 专用：从 parquet 提取 annotation.substask 和 annotation.time_clip
+#  RoboInter-specific: Extract annotation.substask and annotation.time_clip from parquet
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _robointer_episode_extra(
     task_path: Path, info: dict, ep: dict,
 ) -> dict:
-    """返回 RoboInter (RH20T-RoboInter/droid_RoboInter) episode 的 steps / instruction / step_source 等额外字段。"""
+    """Return extra fields (steps / instruction / step_source) for a RoboInter (RH20T-RoboInter/droid_RoboInter) episode."""
     import pandas as pd
     import json as json_module
 
@@ -212,30 +212,30 @@ def _robointer_episode_extra(
 
     if pq_path.exists():
         try:
-            # 读取 parquet 文件中的 frame_index, annotation.substask 和 annotation.time_clip
+            # Read frame_index, annotation.substask and annotation.time_clip from parquet
             df = pd.read_parquet(pq_path, columns=["frame_index", "annotation.substask", "annotation.time_clip"])
 
             if not df.empty and "annotation.substask" in df.columns:
-                # 解析 time_clip（存储为字符串，如 "[[0, 286]]"）
+                # Parse time_clip (stored as string, e.g. "[[0, 286]]")
                 if "annotation.time_clip" in df.columns:
                     time_clip_str = df["annotation.time_clip"].iloc[0]
                     if time_clip_str:
                         try:
-                            # 解析 JSON 格式的 time_clip
+                            # Parse JSON-formatted time_clip
                             time_clip = json_module.loads(time_clip_str)
                             if time_clip and isinstance(time_clip, list) and len(time_clip) > 0:
-                                # 构造 steps_raw，每个 time_clip 段作为一个 step
-                                # 从对应时间段的帧中读取 substask 描述
+                                # Build steps_raw, each time_clip segment as one step
+                                # Read substask description from frames in the corresponding time segment
                                 steps_raw = []
                                 for i, clip in enumerate(time_clip):
                                     if isinstance(clip, list) and len(clip) == 2:
                                         start_frame, end_frame = clip[0], clip[1]
-                                        # 获取该时间段内的 substask（读取该段第一帧的 substask）
+                                        # Get substask for this time segment (read substask at segment's first frame)
                                         segment_rows = df[df["frame_index"] == start_frame]
                                         if not segment_rows.empty:
                                             substask = segment_rows.iloc[0]["annotation.substask"]
                                         else:
-                                            # 如果找不到精确的frame，使用第一个可用的substask
+                                            # If exact frame not found, use the first available substask
                                             substask = df["annotation.substask"].iloc[0]
 
                                         steps_raw.append({
@@ -245,7 +245,7 @@ def _robointer_episode_extra(
                                             "end": end_frame,
                                         })
 
-                                # 使用第一个 substask 作为整体 instruction
+                                # Use the first substask as the overall instruction
                                 if steps_raw:
                                     instruction = steps_raw[0]["desc"]
                         except (json_module.JSONDecodeError, ValueError):
@@ -253,7 +253,7 @@ def _robointer_episode_extra(
         except Exception:
             pass
 
-    # 如果从 parquet 读取失败，尝试从 tasks.jsonl 获取 instruction
+    # If reading from parquet failed, try getting instruction from tasks.jsonl
     if not instruction:
         instruction = get_instruction(task_path / "meta" / "tasks.jsonl", ep)
 
@@ -266,19 +266,19 @@ def _robointer_episode_extra(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  RoboCOIN 专用：从 parquet 的 subtask_annotation 字段提取 steps
+#  RoboCOIN-specific: Extract steps from parquet's subtask_annotation field
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _robocoin_extract_subtask_steps(
     task_path: Path, info: dict, ep: dict
 ) -> tuple[list[dict] | None, str | None]:
     """
-    从 RoboCoin 数据集的 parquet 文件和 subtask_annotations.jsonl 中提取 steps。
+    Extract steps from RoboCoin dataset's parquet files and subtask_annotations.jsonl.
 
-    返回:
+    Returns:
         (steps_raw, instruction)
-        steps_raw: 每个 subtask 的起止帧和描述
-        instruction: 第一个非 null subtask 的描述作为整体 instruction
+        steps_raw: start/end frames and description for each subtask
+        instruction: the first non-null subtask description as the overall instruction
     """
     import pandas as pd
 
@@ -292,7 +292,7 @@ def _robocoin_extract_subtask_steps(
     if not pq_path.exists():
         return None, None
 
-    # 1. 读取 subtask_annotations.jsonl
+    # 1. Read subtask_annotations.jsonl
     subtask_file = task_path / "annotations" / "subtask_annotations.jsonl"
     if not subtask_file.exists():
         return None, None
@@ -304,7 +304,7 @@ def _robocoin_extract_subtask_steps(
                 data = json.loads(line)
                 subtasks[data['subtask_index']] = data['subtask']
 
-    # 2. 读取 parquet 文件中的 subtask_annotation 字段
+    # 2. Read subtask_annotation field from parquet
     try:
         df = pd.read_parquet(pq_path, columns=["subtask_annotation", "frame_index"])
     except Exception:
@@ -313,21 +313,21 @@ def _robocoin_extract_subtask_steps(
     if df.empty or "subtask_annotation" not in df.columns:
         return None, None
 
-    # 3. 提取每帧的 subtask_index (使用数组的位置 0)
+    # 3. Extract subtask_index per frame (using position 0 in the array)
     subtask_indices = []
     for i in range(len(df)):
         val = df['subtask_annotation'].iloc[i]
         if hasattr(val, '__iter__') and not isinstance(val, str):
-            # 数组形式，取第一个元素
+            # Array form, take first element
             if len(val) > 0:
                 subtask_indices.append(int(val[0]))
             else:
                 subtask_indices.append(None)
         else:
-            # 标量形式
+            # Scalar form
             subtask_indices.append(int(val) if val is not None else None)
 
-    # 4. 识别连续的 subtask 段落
+    # 4. Identify contiguous subtask segments
     if not subtask_indices:
         return None, None
 
@@ -337,7 +337,7 @@ def _robocoin_extract_subtask_steps(
 
     for i in range(1, len(subtask_indices)):
         if subtask_indices[i] != current_idx:
-            # 结束当前段落
+            # End current segment
             segments.append({
                 'subtask_index': current_idx,
                 'start': start_frame,
@@ -346,14 +346,14 @@ def _robocoin_extract_subtask_steps(
             current_idx = subtask_indices[i]
             start_frame = i
 
-    # 添加最后一段
+    # Add last segment
     segments.append({
         'subtask_index': current_idx,
         'start': start_frame,
         'end': len(subtask_indices) - 1,
     })
 
-    # 5. 构建 steps_raw，过滤掉 "null" 的段落
+    # 5. Build steps_raw, filtering out "null" segments
     steps_raw = []
     instruction = None
 
@@ -363,22 +363,22 @@ def _robocoin_extract_subtask_steps(
             continue
 
         desc = subtasks[idx]
-        # 跳过 "null" 描述的段落
+        # Skip segments with "null" descriptions
         if desc is None or str(desc).lower() == "null":
             continue
 
         steps_raw.append({
-            "i": len(steps_raw),  # 重新编号，从 0 开始
+            "i": len(steps_raw),  # Re-number starting from 0
             "desc": desc,
             "start": seg['start'],
             "end": seg['end'],
         })
 
-        # 第一个非 null 的 subtask 作为整体 instruction
+        # First non-null subtask as the overall instruction
         if instruction is None:
             instruction = desc
 
-    # 如果没有有效的 steps，返回 None
+    # If no valid steps, return None
     if not steps_raw:
         return None, None
 
@@ -386,10 +386,10 @@ def _robocoin_extract_subtask_steps(
 
 
 def _robocoin_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
-    """返回 RoboCoin episode 的 steps / instruction / step_source 等额外字段。"""
+    """Return extra fields (steps / instruction / step_source) for a RoboCoin episode."""
     steps_raw, _ = _robocoin_extract_subtask_steps(task_path, info, ep)
 
-    # instruction 从 episodes.jsonl 的 tasks 字段读取
+    # instruction is read from episodes.jsonl's tasks field
     instruction = None
     if ep.get("tasks"):
         tasks_list = ep["tasks"]
@@ -398,7 +398,7 @@ def _robocoin_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
         elif isinstance(tasks_list, str):
             instruction = tasks_list
 
-    # 如果 tasks 字段为空，尝试从 tasks.jsonl 获取
+    # If tasks field is empty, try getting from tasks.jsonl
     if not instruction:
         instruction = get_instruction(task_path / "meta" / "tasks.jsonl", ep)
 
@@ -411,23 +411,23 @@ def _robocoin_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  RoboMindV1.0 专用：从 episodes.jsonl 的 action_config_json 字段提取 steps
+#  RoboMindV1.0-specific: Extract steps from episodes.jsonl's action_config_json field
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _robomindv1_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
     """
-    返回 RoboMindV1.0 episode 的 steps / instruction / step_source 等额外字段。
+    Return extra fields (steps / instruction / step_source) for a RoboMindV1.0 episode.
 
-    steps 来自 episodes.jsonl 每行的 action_config_json 字段（JSON 字符串），
-    结构为：{"task_summary": "...", "steps": [{"step_description": "...",
-              "start_frame": "camera_front_NNNN.jpg",
-              "end_frame": "camera_front_NNNN.jpg"}, ...]}
-    帧号从文件名中提取（camera_front_NNNN.jpg → int(NNNN)）。
-    过滤掉 step_description 为 "[none]" 的段落。
+    Steps come from the action_config_json field (JSON string) in each episodes.jsonl row.
+    Structure: {"task_summary": "...", "steps": [{"step_description": "...",
+                "start_frame": "camera_front_NNNN.jpg",
+                "end_frame": "camera_front_NNNN.jpg"}, ...]}
+    Frame numbers are extracted from filenames (camera_front_NNNN.jpg -> int(NNNN)).
+    Segments with step_description "[none]" are filtered out.
     """
     import re
 
-    # instruction 从 tasks 字段读取
+    # instruction is read from the tasks field
     instruction = None
     if ep.get("tasks"):
         t = ep["tasks"]
@@ -435,7 +435,7 @@ def _robomindv1_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
     if not instruction:
         instruction = get_instruction(task_path / "meta" / "tasks.jsonl", ep)
 
-    # 解析 action_config_json（JSON 字符串）或 action_config（JSON 对象），兼容两种字段名
+    # Parse action_config_json (JSON string) or action_config (JSON object), compatible with both field names
     cfg_field = "action_config_json" if ep.get("action_config_json") else "action_config"
     raw_cfg = ep.get(cfg_field)
     if not raw_cfg:
@@ -457,7 +457,7 @@ def _robomindv1_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
     steps_raw = []
     for step in raw_steps:
         desc = (step.get("step_description") or "").strip()
-        # 过滤无意义的 [none] 步骤
+        # Filter out meaningless [none] steps
         if not desc or desc.lower() == "[none]":
             continue
         start = _frame_num(step.get("start_frame", ""))
@@ -478,7 +478,7 @@ def _robomindv1_episode_extra(task_path: Path, info: dict, ep: dict) -> dict:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  通用构建
+#  General Record Building
 # ═════════════════════════════════════════════════════════════════════════════
 
 def build_episode_record(
@@ -491,7 +491,7 @@ def build_episode_record(
     episodes: list[dict],
     task_map: dict[int, str],
 ) -> tuple[dict | None, dict | None]:
-    """为一个 cluster 代表性 episode 构建完整记录。"""
+    """Build a full record for a cluster's representative episode."""
     task_path = Path(subdatasets_root)
     subdataset_name = task_path.name
     meta = task_path / "meta"
@@ -513,7 +513,7 @@ def build_episode_record(
             reason="no video views in info.json",
         )
 
-    # 对于 RoboCOIN 数据集，过滤掉 fisheye 视角
+    # For RoboCOIN datasets, filter out fisheye views
     if dataset_name in ["RoboCOIN", "RoboCOIN_add0130", "RoboCOIN_add1201"]:
         views = [v for v in views if "fisheye" not in v.lower()]
         if not views:
@@ -578,7 +578,7 @@ def build_episode_record(
 def _process_one_subdataset(
     json_path: str, dataset_name: str, ds_info: dict,
 ) -> tuple[list[dict], list[dict]]:
-    """处理单个子数据集的 cluster_results.json，可在子进程中运行。"""
+    """Process a single sub-dataset's cluster_results.json; can run in a subprocess."""
     sub_name = os.path.basename(os.path.dirname(json_path))
     meta_cache = SubdatasetMetaCache()
     records: list[dict] = []
@@ -594,7 +594,7 @@ def _process_one_subdataset(
         return records, skipped
 
     for cluster_id, full_path_or_list in cluster_repr.items():
-        # 兼容新格式（list of paths）和旧格式（single path string）
+        # Compatible with new format (list of paths) and old format (single path string)
         if isinstance(full_path_or_list, list):
             path_list = full_path_or_list
         else:
@@ -636,7 +636,7 @@ def _process_one_subdataset(
 def collect_dataset(
     results_root: str, dataset_name: str, num_workers: int = 8,
 ) -> tuple[list[dict], list[dict]]:
-    """收集一个 dataset 下所有子数据集的 cluster 代表性 episode 信息（多进程）。"""
+    """Collect cluster representative episode information for all sub-datasets under a dataset (multi-process)."""
     dataset_dir = os.path.join(results_root, dataset_name)
     if not os.path.isdir(dataset_dir):
         print(f"[WARN] {dataset_dir} not found, skipping")
@@ -647,16 +647,16 @@ def collect_dataset(
         print(f"[WARN] unknown dataset '{dataset_name}', using defaults")
         ds_info = {"label": dataset_name.lower(), "prefix": dataset_name.lower(), "type": "simple"}
 
-    # 收集所有待处理的 json 路径（递归查找，支持多级目录结构）
+    # Collect all json paths to process (recursive search, supports multi-level directory structures)
     json_paths = []
     dataset_path = Path(dataset_dir)
 
-    # 使用 rglob 递归查找所有 cluster_results.json 文件
+    # Use rglob to recursively find all cluster_results.json files
     for json_path in dataset_path.rglob("cluster_results.json"):
         if json_path.is_file():
             json_paths.append(str(json_path))
 
-    # 排序以确保处理顺序一致
+    # Sort to ensure consistent processing order
     json_paths.sort()
 
     if not json_paths:
@@ -697,14 +697,14 @@ def main():
         description="Collect cluster representative episodes with full metadata")
     p.add_argument("--results_root", type=str,
                    default="./results_two_stage",
-                   help="聚类结果根目录 (default: ./results_two_stage)")
+                   help="Clustering results root directory (default: ./results_two_stage)")
     p.add_argument("--datasets", nargs="+", default=None,
-                   help="要处理的数据集名称（默认处理 results_root 下所有目录）")
+                   help="Dataset names to process (default: all directories under results_root)")
     p.add_argument("--output", type=str,
                    default="cluster_representation_summary.json",
-                   help="输出 JSON 路径")
+                   help="Output JSON path")
     p.add_argument("--workers", type=int, default=8,
-                   help="并行处理子数据集的进程数 (default: 8)")
+                   help="Number of parallel workers for sub-dataset processing (default: 8)")
     args = p.parse_args()
 
     if args.datasets:

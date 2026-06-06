@@ -5,10 +5,10 @@ from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="统计每个 task 的 success rate（success1=成功，success0=失败）。")
-    parser.add_argument("--root", type=str, required=True, help="任务目录根路径（下一级是 24 个 task 文件夹）。")
-    parser.add_argument("--out", type=str, required=True, help="输出汇总表格文件（建议 .md 或 .log）。")
-    parser.add_argument("--expected_tasks", type=int, default=24, help="期望 task 数量，默认 24。")
+    parser = argparse.ArgumentParser(description="Calculate success rate for each task (success1=success, success0=failure).")
+    parser.add_argument("--root", type=str, required=True, help="Root path of the task directory (next level contains 24 task folders).")
+    parser.add_argument("--out", type=str, required=True, help="Output summary table file (recommend .md or .log).")
+    parser.add_argument("--expected_tasks", type=int, default=24, help="Expected number of tasks, default 24.")
     return parser.parse_args()
 
 
@@ -20,7 +20,7 @@ def main() -> None:
     if not root.exists() or not root.is_dir():
         raise FileNotFoundError(f"Root directory not found: {root}")
 
-    # success1=成功, success0=失败
+    # success1=success, success0=failure
     pattern = re.compile(r"_success([01])\.mp4$")
 
     task_rows: list[tuple[str, int, int, float]] = []
@@ -44,9 +44,9 @@ def main() -> None:
         total_success += success
         total_count += total
 
-    # 24 个 task 的平均（宏平均）
+    # Macro average across all 24 tasks
     macro_avg = sum(r[3] for r in task_rows) / len(task_rows) if task_rows else 0.0
-    # 全部样本的平均（微平均）
+    # Micro average across all samples
     micro_avg = (total_success / total_count) if total_count > 0 else 0.0
 
     lines: list[str] = []

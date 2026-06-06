@@ -940,12 +940,21 @@ def _call_vqa_api(
                     content = msg.get("content", "")
                     if isinstance(content, list):
                         content = "".join(p.get("text", "") for p in content if p.get("type") == "text")
-                usage = data.get("usage", {})
-                return content.strip(), {
-                    "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0),
-                    "total_tokens": usage.get("total_tokens", 0),
-                }
+                usage_meta = data.get("usageMetadata", {})
+                if usage_meta:
+                    token_usage = {
+                        "prompt_tokens": usage_meta.get("promptTokenCount", 0),
+                        "completion_tokens": usage_meta.get("candidatesTokenCount", 0),
+                        "total_tokens": usage_meta.get("totalTokenCount", 0),
+                    }
+                else:
+                    usage = data.get("usage", {})
+                    token_usage = {
+                        "prompt_tokens": usage.get("prompt_tokens", 0),
+                        "completion_tokens": usage.get("completion_tokens", 0),
+                        "total_tokens": usage.get("total_tokens", 0),
+                    }
+                return content.strip(), token_usage
             except Exception as e:
                 err = str(e)
                 is_rate = "429" in err or "rate" in err.lower()

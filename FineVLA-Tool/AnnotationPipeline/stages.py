@@ -365,7 +365,7 @@ def run_galaxea_step_refinement(
 
     Reads ``steps_raw`` from trajectory_dict.  Each entry has:
       - i: step index
-      - desc: "中文描述@English description"
+      - desc: "Chinese description@English description"
       - start / end: frame indices (inclusive)
 
     Produces fine_grained_steps (list) + refined_instruction (paragraph).

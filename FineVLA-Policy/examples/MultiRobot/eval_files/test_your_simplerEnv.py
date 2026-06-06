@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 env_name = "PutEggplantInBasketScene-v0"
 
-path_to_your_simplerEnv = "/root/Benchmarks/SimplerEnv" # TODO: 修改为你自己的图片路径
+path_to_your_simplerEnv = "/root/Benchmarks/SimplerEnv" # TODO: Change to your own image path
 
 kwargs = {
     "obs_mode": "rgbd",

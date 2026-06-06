@@ -1,23 +1,23 @@
 """
-ckpt评测结果可视化脚本
+Checkpoint evaluation results visualization script
 =====================
 
-功能：
-    - 统计并可视化不同step的ckpt在多个task下的评测成功率。
-    - 支持同一step同一task多次评测，自动取均值。
-    - 只统计log文件中包含 'Average success' 的结果。
-用法：
+Features:
+    - Collects and visualizes success rates of checkpoints at different steps across multiple tasks.
+    - Supports multiple evaluation runs for the same step and task, automatically averaging the results.
+    - Only counts results from log files containing 'Average success'.
+Usage:
     python visual_eval_results.py [log_dir]
-    # log_dir 为日志文件夹路径（如 .../output_eval），可选，默认用脚本内置路径。
-输出：
-    - eval_results.png  可视化图片
-    - eval_results.csv  每个step每个task及均值的成功率表格
-    （均保存在log_dir的上上级目录）
+    # log_dir is the path to the log directory (e.g., .../output_eval), optional, defaults to the built-in path.
+Output:
+    - eval_results.png  visualization image
+    - eval_results.csv  success rate table for each step, each task, and the average
+    (both saved in the grandparent directory of log_dir)
 
-依赖：
+Dependencies:
     numpy, matplotlib, csv
 
-示例：
+Example:
     python visual_eval_results.py /path/to/output_eval
 """
 
@@ -34,19 +34,19 @@ import argparse
 def visualize_ckpt_results(log_dir=None):
     if log_dir is None:
         log_dir = "/mnt/cpfs_m6_29e5gphu/data/user/jinhui/Projects/starVLA/results/Checkpoints/bridge_rt_1__init/checkpoints/output_eval"
-    # 输出路径
+    # Output paths
     out_dir = os.path.abspath(os.path.join(log_dir, "../.."))
     img_path = os.path.join(out_dir, "eval_visuals/eval_results.png")
     csv_path = os.path.join(out_dir, "eval_visuals/eval_results.csv")
     os.makedirs(os.path.dirname(img_path), exist_ok=True)
 
-    # 匹配文件名
+    # Match file names
     log_pattern = re.compile(r"steps_(\d+)_pytorch_model_(.+)-v0_run(\d+)\.log")
 
-    # 统计结构: step -> task -> [success_rate, ...]
+    # Stats structure: step -> task -> [success_rate, ...]
     results = defaultdict(lambda: defaultdict(list))
 
-    # 解析每个log文件
+    # Parse each log file
     for fname in os.listdir(log_dir):
         m = log_pattern.match(fname)
         if not m:
@@ -65,7 +65,7 @@ def visualize_ckpt_results(log_dir=None):
         if avg_success is not None:
             results[step][task].append(avg_success)
 
-    # 颜色和线型
+    # Colors and line styles
     color_map = {
         'PutCarrotOnPlateInScene': 'tab:blue',
         'PutEggplantInBasketScene': 'tab:green',
@@ -74,12 +74,12 @@ def visualize_ckpt_results(log_dir=None):
     }
     linestyles = ['dashed', 'dotted', (0, (5, 1)), (0, (3, 5, 1, 5))]
 
-    # 画图
+    # Plot
     plt.figure(figsize=(10, 6))
     all_steps = sorted(results.keys(), key=int)
     task_names = sorted({t for v in results.values() for t in v})
 
-    # 保存csv数据
+    # Save CSV data
     with open(csv_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         header = ['step'] + task_names + ['Avg']
@@ -130,8 +130,8 @@ def visualize_ckpt_results(log_dir=None):
     plt.show()
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="ckpt评测结果可视化脚本")
-    parser.add_argument('--log_dir', type=str, default=None, help='日志文件夹路径（output_eval）')
+    parser = argparse.ArgumentParser(description="Checkpoint evaluation results visualization script")
+    parser.add_argument('--log_dir', type=str, default=None, help='Path to the log directory (output_eval)')
     return parser.parse_args()
 
 if __name__ == '__main__':

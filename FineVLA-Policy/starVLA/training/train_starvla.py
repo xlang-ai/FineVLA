@@ -158,7 +158,7 @@ class VLATrainer(TrainerUtils):
         # load pretrained weights
         self._init_checkpointing() # TODO merge with load pretrained weights
 
-        # 根据  resume 调整 lr_scheduler
+        # Adjust lr_scheduler for resume
         self._adjust_lr_scheduler_for_resume()
 
         
@@ -186,11 +186,11 @@ class VLATrainer(TrainerUtils):
 
 
     def _adjust_lr_scheduler_for_resume(self):
-        """根据已完成的步数调整学习率调度器状态"""
+        """Adjust learning rate scheduler state based on completed steps"""
         if self.completed_steps > 0:
             logger.info(f"Adjusting LR scheduler for resume from step {self.completed_steps}")
             
-            # 方法1: 直接模拟已完成的步数（适用于大多数调度器）
+            # Method 1: directly simulate completed steps (works for most schedulers)
             for _ in range(self.completed_steps):
                 self.lr_scheduler.step()
             
@@ -246,17 +246,17 @@ class VLATrainer(TrainerUtils):
         self.checkpoint_dir = os.path.join(self.config.output_dir, "checkpoints")
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
-        # 获取预训练检查点和是否恢复训练的标志
+        # Get pretrained checkpoint and resume training flag
         pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
         is_resume = getattr(self.config.trainer, "is_resume", False)
         self.resume_from_checkpoint = pretrained_checkpoint
         # TODO retinking resume and load from pretrained_checkpoint
         if is_resume and pretrained_checkpoint == None:
-            # 恢复训练状态
+            # Resume training state
             resume_from_checkpoint, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
             self.resume_from_checkpoint = resume_from_checkpoint
 
-        # 加载预训练权重
+        # Load pretrained weights
         if self.resume_from_checkpoint:
             self.config.trainer.pretrained_checkpoint = self.resume_from_checkpoint
             reload_modules = getattr(self.config.trainer, "reload_modules", None)
@@ -437,7 +437,7 @@ class VLATrainer(TrainerUtils):
         )
 
         if self.accelerator.is_main_process:
-            if "multiRobo" not in self.config.framework.name: # TODO make sure mse_score is computed， think about who should do this
+            if "multiRobo" not in self.config.framework.name: # TODO make sure mse_score is computed, think about who should do this
                 normalized_actions = output_dict["normalized_actions"]  # B, T, D
                 actions = np.array(actions)  # convert actions to numpy.ndarray
                 # B, Chunk, dim = actions.shape
@@ -447,11 +447,11 @@ class VLATrainer(TrainerUtils):
                 average_score = score / num_pots
                 step_metrics["mse_score"] = average_score
             else:
-                # output_dict 中带有score 的计算结果
+                # output_dict contains the computed score results
                 step_metrics["mse_score"] = output_dict["mse_score"]
                 all_mse_scores = output_dict["all_mse_scores"]
                  
-                # 将 all_mse_scores 的每个键值对记录到不同的 W&B 面板
+                # Log each key-value pair from all_mse_scores to different W&B panels
                 # only for mult-robot eval
                 for key, value in all_mse_scores.items():
                     wandb.log({f"robot_mse_scores/{key}": value}, step=self.completed_steps)

@@ -92,9 +92,9 @@ class Qwen_PI(baseframework):
             dict:
                 action_loss (torch.Tensor): Scalar diffusion noise prediction loss.
         """
-        batch_images = [example["image"] for example in examples]  #  [B，[PLT]]
+        batch_images = [example["image"] for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
-        actions = [example["action"] for example in examples]  # label [B， len, 7]
+        actions = [example["action"] for example in examples]  # label [B, len, 7]
         
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
         
@@ -108,7 +108,7 @@ class Qwen_PI(baseframework):
                 output_hidden_states=True,
                 return_dict=True,
             )
-            # 取与 DiT 层数匹配的最后 N 层隐藏态，按层喂给 DiT
+            # Take the last N hidden states matching DiT layer count, feed to DiT layer by layer
             all_hidden = qwenvl_outputs.hidden_states
             expected_layers = len(self.action_model.model.transformer_blocks)
             vl_embs_list = list(all_hidden[-expected_layers:])
@@ -116,7 +116,7 @@ class Qwen_PI(baseframework):
 
         # Step 4: Action Expert Forward and Loss
         with torch.autocast("cuda", dtype=torch.float32):
-            # 标签对齐：取最后 chunk_len 段
+            # Label alignment: take the last chunk_len segment
             actions = torch.tensor(
                 np.array(actions), device=base_hidden.device, dtype=base_hidden.dtype
             )  # [B, T_full, action_dim]
@@ -127,7 +127,7 @@ class Qwen_PI(baseframework):
             )
             repeated_diffusion_steps = 2 # NO repeat for big action FM
             actions_target_repeated = actions_target.repeat(repeated_diffusion_steps, 1, 1)
-            # 对每层特征做 repeat
+            # Repeat features for each layer
             vl_embs_list_repeated = [h.repeat(repeated_diffusion_steps, 1, 1) for h in vl_embs_list]
             
             state_repeated = None
@@ -150,7 +150,7 @@ class Qwen_PI(baseframework):
         **kwargs: str,
     ) -> np.ndarray:
         """
-        推理：单次前向直接回归未来动作（无扩散采样）。
+        Inference: single forward pass to directly regress future actions (no diffusion sampling).
 
         Steps:
           1. Resize images to training resolution (if specified)
@@ -162,7 +162,7 @@ class Qwen_PI(baseframework):
                 normalized_actions (np.ndarray): Shape [B, T, action_dim], diffusion-sampled normalized actions.
         """
         from deployment.model_server.tools.image_tools import to_pil_preserve
-        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B，[PLT]]
+        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
     
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
@@ -241,7 +241,7 @@ if __name__ == "__main__":
     print(f"Unnormalized Action: {normalized_actions}")
 
     # # Advance: try forward model with dataloader
-    # # can be fake sample， but here get from dataloader for simpler
+    # # can be fake sample, but here get from dataloader for simpler
     # from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
 
     # vla_dataset_cfg = cfg.datasets.vla_data

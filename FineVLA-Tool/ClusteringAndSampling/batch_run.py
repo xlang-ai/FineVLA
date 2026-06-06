@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
 """
-批量运行 VLA 轨迹聚类分析。
+Batch run VLA trajectory clustering analysis.
 
-遍历 config.py 中注册的所有数据集（或指定子集），
-自动发现子数据集，逐个执行 DTW + 聚类流程。
+Iterates over all datasets registered in config.py (or a specified subset),
+automatically discovers sub-datasets, and runs DTW + clustering for each.
 
-用法:
-    # 运行所有数据集
+Usage:
+    # Run all datasets
     python batch_run.py --output_root ./results
 
-    # 只运行指定数据集
+    # Run only specific datasets
     python batch_run.py --datasets Galaxea RDT --output_root ./results
 
-    # 断点续跑（跳过已有结果的子数据集）
+    # Resume from checkpoint (skip sub-datasets with existing results)
     python batch_run.py --resume --output_root ./results
 
-    # 指定手臂侧
+    # Specify arm side
     python batch_run.py --datasets Galaxea --side right --output_root ./results
 
-    # 只处理每个数据集的前 N 个子数据集（调试用）
+    # Only process the first N sub-datasets per dataset (for debugging)
     python batch_run.py --max_sub_datasets 3 --output_root ./results
 
 
-    # 测试跑4个datasets
+    # Test run on 4 datasets
     python batch_run.py \
     --datasets Galaxea \
     --side both \
     --output_root ./resultsGalaxea-10-both-normalize \
     --max_sub_datasets 2
 
-    #测试整个数据集
+    # Test full dataset
     python batch_run.py \
     --datasets Galaxea \
     --side both \
@@ -37,7 +37,7 @@
     --max_sub_datasets 2
 
 
-    # 测试RDT数据集
+    # Test RDT dataset
     python batch_run.py \
         --datasets RDT \
         --side both \
@@ -46,8 +46,8 @@
         --max_depth 2 \
         --min_cluster_size 3 \
         --output_root ./results_two_stage
-    
-    #测试
+
+    # Test
     python batch_run.py \
         --datasets RDT \
         --side both \
@@ -56,7 +56,7 @@
         --max_depth 2 \
         --min_cluster_size 3 \
         --output_root ./results_two_stage
-    
+
     python batch_run.py \
         --datasets RoboMindV1 \
         --side both \
@@ -86,7 +86,7 @@
         --filter_report auto \
         --resume
 
-    # RoboMindV1, 每一个task 重复度非常高。每个task 分成10个cluster
+    # RoboMindV1: very high repetition per task. Split each task into 10 clusters
     python batch_run.py \
       --datasets RoboMindV1.0 \
       --side both \
@@ -96,8 +96,8 @@
       --linkage_method average \
       --filter_report auto \
       --resume
-      
-    # RoboMindV2, 每一个task 重复度非常高。每个task 分成10个cluster
+
+    # RoboMindV2: very high repetition per task. Split each task into 10 clusters
     python batch_run.py \
       --datasets RoboMindV2.0 \
       --side both \
@@ -108,7 +108,7 @@
       --filter_report auto \
       --resume
 
-    # RH20T ，重复性依旧很高，所以每个cluster 10个
+    # RH20T: still very high repetition, so 10 clusters each
     python batch_run.py \
         --datasets RH20T \
         --side both \
@@ -151,7 +151,7 @@ import numpy as np
 
 
 def load_filter_report(report_path: str) -> set[int]:
-    """从 *filter_report.json 中提取有问题的 episode index 集合（平面格式）。"""
+    """Extract problematic episode index set from *filter_report.json (flat format)."""
     with open(report_path, encoding="utf-8") as f:
         data = json.load(f)
     problem = set()
@@ -168,10 +168,10 @@ def load_filter_report(report_path: str) -> set[int]:
 
 
 def find_filter_reports(dataset_root: str, recursive: bool = False) -> list[str]:
-    """在 dataset_root 下查找所有以 filter_report.json 结尾的文件。
+    """Find all files ending with filter_report.json under dataset_root.
 
-    recursive=False: 只在 dataset_root 下查找（非递归）
-    recursive=True:  在 dataset_root 及其一层子目录下查找
+    recursive=False: only search in dataset_root (non-recursive)
+    recursive=True:  search in dataset_root and its one level of subdirectories
     """
     results = []
     for fname in os.listdir(dataset_root):
@@ -213,7 +213,7 @@ def _compute_single_side_distance(
     exclude_episodes: set[int] | None = None,
     robot_type: str | None = None,
 ) -> tuple[np.ndarray | None, list[int], float]:
-    """计算单侧手臂的 DTW 距离矩阵，返回 (dist_matrix, episode_ids, elapsed)。"""
+    """Compute single-arm DTW distance matrix, returns (dist_matrix, episode_ids, elapsed)."""
     trajectories = load_trajectories(
         dataset_root, config=cfg, side=side, max_episodes=max_episodes,
         exclude_episodes=exclude_episodes, robot_type=robot_type,
@@ -266,11 +266,11 @@ def process_sub_dataset(
     exclude_episodes: set[int] | None = None,
     robot_type: str | None = None,
 ) -> dict:
-    """处理单个子数据集，返回结果摘要。"""
+    """Process a single sub-dataset, returns a result summary."""
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # 1. 加载 & 计算距离矩阵
+    # 1. Load & compute distance matrix
     sides_to_run = ["left", "right"] if side == "both" else [side]
     side_label = side
 
@@ -315,7 +315,7 @@ def process_sub_dataset(
                 dist_matrix = dist_matrix + dm
 
     if dist_matrix is None or (episode_ids is not None and len(episode_ids) < 2):
-        # 尝试 fallback 到其他 side（处理异构数据集如 RoboMindV1）
+        # Try fallback to other sides (handles heterogeneous datasets like RoboMindV1)
         fallback_sides = [s for s in cfg.available_sides if s not in sides_to_run and s in cfg.arms]
         for fb_side in fallback_sides:
             fb_sides = ["left", "right"] if fb_side == "both" else [fb_side]
@@ -359,7 +359,7 @@ def process_sub_dataset(
     n_pairs = N * (N - 1) // 2
     logger.info(f"  Combined distance matrix: {N}x{N}, elapsed={total_elapsed:.1f}s")
 
-    # 保存距离矩阵
+    # Save distance matrix
     logger.info(f"  Saving distance matrix ...")
     np.savez(
         os.path.join(output_dir, "distance_matrix.npz"),
@@ -389,7 +389,7 @@ def process_sub_dataset(
         json.dump(dm_json, f, indent=2)
     logger.info(f"  Distance matrix saved.")
 
-    # 3. 聚类
+    # 3. Clustering
     elapsed = total_elapsed
     result = {
         "dataset_name": cfg.dataset_name,
@@ -412,7 +412,7 @@ def process_sub_dataset(
 
     t_cluster = time.time()
     if recursive:
-        # ── 递归聚类 ──
+        # ── Recursive clustering ──
         logger.info(f"  Recursive clustering (max_depth={max_depth}, "
                      f"min_size={min_cluster_size}, min_rel_gap={min_rel_gap})")
         tree = recursive_clustering(
@@ -453,7 +453,7 @@ def process_sub_dataset(
         linkage_mat = None
         actual_k = n_leaf
     else:
-        # ── 原始单层聚类 ──
+        # ── Original flat clustering ──
         actual_k = min(n_clusters, N) if n_clusters > 0 else n_clusters
 
         hier_labels, linkage_mat = None, None
@@ -504,7 +504,7 @@ def process_sub_dataset(
     with open(os.path.join(output_dir, "cluster_results.json"), "w") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    # 4. 可视化
+    # 4. Visualization
     t_viz = time.time()
     logger.info(f"  Generating visualizations ...")
     try:
@@ -537,43 +537,43 @@ def process_sub_dataset(
 def main():
     p = argparse.ArgumentParser(description="Batch VLA trajectory clustering")
     p.add_argument("--datasets", nargs="+", default=None,
-                   help="要处理的数据集名称（默认全部）") 
+                   help="Dataset names to process (default: all)")
     p.add_argument("--output_root", type=str, default="./results",
-                   help="输出根目录 (default: ./results)")
+                   help="Output root directory (default: ./results)")
     p.add_argument("--side", type=str, default=None,
-                   help="手臂侧: right/left/both（默认使用 config 中的第一个，both=左右臂距离加和）")
+                   help="Arm side: right/left/both (default: use first from config, both=sum of left and right distances)")
     p.add_argument("--resume", action="store_true",
-                   help="跳过已有 distance_matrix.npz 的子数据集")
+                   help="Skip sub-datasets that already have distance_matrix.npz")
     p.add_argument("--window", type=int, default=None,
-                   help="Sakoe-Chiba 窗口")
+                   help="Sakoe-Chiba window")
     p.add_argument("--n_clusters", type=int, default=None,
-                   help="聚类数（0=自动选择最佳 k）")
+                   help="Number of clusters (0=auto-select best k)")
     p.add_argument("--auto_n_clusters_divisor", type=int, default=None,
-                   help="按子数据集 episode 数自动计算 n_clusters = total_episodes // divisor"
-                        "（优先于 --n_clusters）")
+                   help="Auto-compute n_clusters = total_episodes // divisor per sub-dataset"
+                        " (takes priority over --n_clusters)")
     p.add_argument("--cluster_method", type=str, default="both",
                    choices=["hierarchical", "kmedoids", "both"])
     p.add_argument("--linkage_method", type=str, default="average",
                    choices=["average", "complete", "single", "ward"])
     p.add_argument("--max_sub_datasets", type=int, default=None,
-                   help="每个数据集最多处理几个子数据集（调试用）")
+                   help="Max sub-datasets to process per dataset (for debugging)")
     p.add_argument("--max_episodes", type=int, default=None,
-                   help="每个子数据集最多加载几条轨迹")
+                   help="Max trajectories to load per sub-dataset")
 
-    # 递归聚类
+    # Recursive clustering
     p.add_argument("--recursive", action="store_true",
-                   help="启用递归聚类（先分大簇，再在簇内继续划分）")
+                   help="Enable recursive clustering (split into large clusters first, then subdivide)")
     p.add_argument("--max_depth", type=int, default=2,
-                   help="递归最大深度 (default: 3)")
+                   help="Maximum recursion depth (default: 3)")
     p.add_argument("--min_cluster_size", type=int, default=5,
-                   help="递归终止的最小簇大小 (default: 5)")
+                   help="Minimum cluster size to stop recursion (default: 5)")
     p.add_argument("--min_rel_gap", type=float, default=None,
-                   help="子层级 auto-k 的最小 rel_gap 阈值（默认使用 config 中的值）")
+                   help="Minimum rel_gap threshold for sub-level auto-k (default: use config value)")
 
-    # episode 过滤
+    # Episode filtering
     p.add_argument("--filter_report", type=str, default="auto",
-                   help="filter_report.json 路径，排除问题 episode。"
-                        "传 'auto' 则自动在数据集目录下查找 *filter_report.json")
+                   help="Path to filter_report.json to exclude problematic episodes. "
+                        "Pass 'auto' to automatically search for *filter_report.json in dataset directory")
     args = p.parse_args()
 
     logger = setup_logger(args.output_root)
@@ -610,37 +610,37 @@ def main():
         n_clusters = args.n_clusters or cfg.n_clusters
         max_depth = args.max_depth if args.max_depth != 2 else cfg.max_depth
 
-        # 加载 filter_report，排除问题 episode
-        # per_sub_filter=True 时每个子数据集各自查找 filter_report（适用于 RH20T 等）
-        # RoboMindV2.0 使用结构化的 filter_report，需要按 subdataset 名称匹配
+        # Load filter_report and exclude problematic episodes
+        # per_sub_filter=True: each sub-dataset searches for its own filter_report (e.g., RH20T)
+        # RoboMindV2.0 uses structured filter_report, needs to match by subdataset name
         exclude_episodes: set[int] | None = None
         per_sub_filter = False
-        filter_report_map: dict[str, set[int]] = {}  # 用于 RoboMindV2.0 结构化 filter_report
+        filter_report_map: dict[str, set[int]] = {}  # for RoboMindV2.0 structured filter_report
 
         if args.filter_report:
             if args.filter_report == "auto":
                 report_paths = find_filter_reports(cfg.dataset_path)
                 if not report_paths:
-                    # 根目录没找到，标记为按子数据集各自查找
+                    # Not found in root directory, mark for per-sub-dataset search
                     per_sub_filter = True
                     logger.info(f"  No filter_report in dataset root, will search per sub-dataset")
             else:
                 report_paths = [args.filter_report]
 
             if not per_sub_filter and report_paths:
-                # 检查是否是 RoboMindV2.0 结构化格式（有 subdatasets 字段）
+                # Check if this is a RoboMindV2.0 structured format (has subdatasets field)
                 for rp in report_paths:
                     with open(rp, encoding="utf-8") as f:
                         report_data = json.load(f)
 
                     if "subdatasets" in report_data:
-                        # RoboMindV2.0 结构化格式
+                        # RoboMindV2.0 structured format
                         logger.info(f"  Filter report (structured): {os.path.basename(rp)}")
                         filter_report_map = load_filter_report_v2(rp)
                         total_problems = sum(len(eps) for eps in filter_report_map.values())
                         logger.info(f"    {len(filter_report_map)} subdatasets, {total_problems} total problem episodes")
                     else:
-                        # 平面格式
+                        # Flat format
                         if exclude_episodes is None:
                             exclude_episodes = set()
                         probs = load_filter_report(rp)
@@ -659,7 +659,7 @@ def main():
 
         ds_results = []
         for idx, sub_info in enumerate(sub_datasets):
-            # 适配新的返回格式：dict with keys 'path', 'robot_type', 'name'
+            # Adapt to new return format: dict with keys 'path', 'robot_type', 'name'
             sub_path = sub_info["path"]
             robot_type = sub_info.get("robot_type", "")
             sub_name = sub_info.get("name", os.path.relpath(sub_path, cfg.dataset_path))
@@ -679,22 +679,22 @@ def main():
             try:
                 min_rel_gap = args.min_rel_gap if args.min_rel_gap is not None else cfg.min_rel_gap
 
-                # 按子数据集查找 filter_report（当根目录没有时）
+                # Search for filter_report per sub-dataset (when root has none)
                 sub_exclude = exclude_episodes
 
-                # 如果有结构化 filter_report，匹配 subdataset 名称
+                # If structured filter_report exists, match subdataset name
                 if filter_report_map:
-                    # 尝试多种匹配方式
+                    # Try multiple matching strategies
                     task_name = os.path.basename(sub_path.rstrip("/"))
                     matched_key = None
 
-                    # 1. 精确匹配完整路径（去掉开头的 robot_type）
+                    # 1. Exact match on full path (strip leading robot_type)
                     for key in filter_report_map.keys():
                         if sub_name.endswith(key) or key in sub_name:
                             matched_key = key
                             break
 
-                    # 2. 尝试只匹配 task 名称
+                    # 2. Try matching only task name
                     if not matched_key and task_name in filter_report_map:
                         matched_key = task_name
 
@@ -713,7 +713,7 @@ def main():
                             logger.info(f"    Filter report {os.path.basename(rp)}: {len(probs)} problem episodes")
                             sub_exclude |= probs
 
-                # 按子数据集 episode 数动态计算 n_clusters
+                # Auto-compute n_clusters based on sub-dataset episode count
                 sub_n_clusters = n_clusters
                 if args.auto_n_clusters_divisor:
                     sub_info_path = os.path.join(sub_path, "meta", "info.json")
@@ -763,13 +763,13 @@ def main():
     logger.info(f"Batch complete in {total_elapsed:.1f}s")
     logger.info(f"{'=' * 70}")
 
-    # 保存总结
+    # Save summary
     summary_path = os.path.join(args.output_root, "batch_summary.json")
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
     logger.info(f"Summary saved to {summary_path}")
 
-    # 打印概要
+    # Print summary
     for ds_name, info in summary.items():
         if isinstance(info, dict) and "total" in info:
             logger.info(

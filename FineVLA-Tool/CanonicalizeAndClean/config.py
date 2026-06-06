@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-数据集帧数过滤配置。
-数据集名称 -> 最小帧数阈值，低于此值的 episode 视为「帧数过少」并记录。
-None 表示暂不按帧数过滤，仅统计并记录「task 为空」的 episode。
+Dataset frame-count filtering configuration.
+Dataset name -> minimum frame threshold; episodes below this value are considered "too few frames" and logged.
+None means no frame-count filtering is applied; only episodes with "empty task" are recorded.
 
   python filter_by_state_action_frame.py \
       $VLA_DATA_ROOT/RH20T-RoboInter \
       --episodes 10 --force-reconvert
 """
-# 1.筛选掉帧数过少的episode
-# 数据集名称（与 Lerobot_v21 下目录名或「顶层目录名」对应）-> 最小允许帧数
-# 若某数据集有多层子目录，脚本会先用完整相对路径查找，再用顶层名查找
+# 1. Filter out episodes with too few frames
+# Dataset name (matching directory name under Lerobot_v21 or top-level directory name) -> minimum allowed frames
+# If a dataset has multiple sub-directory levels, the script first looks up by full relative path, then by top-level name
 import os
 
 
@@ -42,15 +42,15 @@ DATASET_MIN_FRAME = {
 
 
 
-# 2. 筛选掉State-Action 差值过大的episode
+# 2. Filter out episodes with excessively large state-action differences
 # ============================================================
-# State-Action 差值筛选配置
+# State-Action Difference Filtering Configuration
 # ============================================================
-# 数据集名称 -> {state_slot, action_slot} 或 None（跳过）
-# slot 名必须与 unified_meta.json 中 slot_layout 的键一致。
-# 禁止使用 left_gripper / right_gripper。
-# state_slot / action_slot 支持字符串（单 slot）或列表（多 slot 拼接，用于双臂）。
-# 列表示例: {"state_slot": ["left_eef", "right_eef"], "action_slot": ["left_eef", "right_eef"]}
+# Dataset name -> {state_slot, action_slot} or None (skip)
+# Slot names must match keys in slot_layout from unified_meta.json.
+# left_gripper / right_gripper are not allowed.
+# state_slot / action_slot accept a string (single slot) or a list (multiple slots concatenated, for dual-arm).
+# List example: {"state_slot": ["left_eef", "right_eef"], "action_slot": ["left_eef", "right_eef"]}
 STATE_ACTION_COMPARE_SLOTS = {
     "BC_Z": {"state_slot": "right_eef", "action_slot": "right_eef"},
     "Bridge": {"state_slot": "right_eef", "action_slot": "right_eef"},
@@ -59,7 +59,7 @@ STATE_ACTION_COMPARE_SLOTS = {
     "droid_RoboInter": {"state_slot": "right_eef", "action_slot": "right_eef"},
     "Galaxea-Open-World-Dataset": {"state_slot": "right_joint", "action_slot": "right_joint"},
     "RDT-yhq": {"state_slot": "right_joint", "action_slot": "right_joint"},
-    # RH20T-fjy 各cfg维度不同，按子路径配置
+    # RH20T-fjy configs have different dimensions; configured by sub-path
     "RH20T-RoboInter": {"state_slot": "right_eef", "action_slot": "right_eef"},
     "RH20T-fjy/rh20t_cfg1": {"state_slot": "right_joint", "action_slot": "right_joint"},
     "RH20T-fjy/rh20t_cfg2": {"state_slot": "right_joint", "action_slot": "right_joint"},
@@ -69,24 +69,24 @@ STATE_ACTION_COMPARE_SLOTS = {
     "RH20T-fjy/rh20t_cfg6": {"state_slot": "right_joint", "action_slot": "right_joint"},
     "RH20T-fjy/rh20t_cfg7": {"state_slot": "right_joint", "action_slot": "right_joint"},
 
-    # RoboCOIN 双臂: 同时比较左右 eef
+    # RoboCOIN dual-arm: compare both left and right eef simultaneously
     "RoboCOIN": {"state_slot": ["left_eef", "right_eef"], "action_slot": ["left_eef", "right_eef"]},
     "RoboCOIN_add0130": {"state_slot": ["left_eef", "right_eef"], "action_slot": ["left_eef", "right_eef"]},
     "RoboCOIN_add1201": {"state_slot": ["left_eef", "right_eef"], "action_slot": ["left_eef", "right_eef"]},
 
-    # RoboMindV1.0 和 RoboMindV2.0: 用 left_joint+right_joint 做 L2 比较（所有 robot type 都有 joint）
-    # 单臂 robot（franka_1rgb/3rgb, ur_1rgb 等）的 left_joint 在 unified 中为零，不影响比较 所以本质上可以把所有的都加进来计算
+    # RoboMindV1.0 and RoboMindV2.0: use left_joint+right_joint for L2 comparison (all robot types have joint)
+    # Single-arm robots (franka_1rgb/3rgb, ur_1rgb, etc.) have left_joint zeroed in unified, which does not affect comparison, so all can be included
     "RoboMindV1.0": {"state_slot": ["left_joint", "right_joint"], "action_slot": ["left_joint", "right_joint"]},
     "RoboMindV2.0": {"state_slot": ["left_joint", "right_joint"], "action_slot": ["left_joint", "right_joint"]},
     "agibotworld_hyy": None,
     "xvla-soft-fold_franka_v3_franka": {"state_slot": "right_joint", "action_slot": "right_joint"},
 }
 
-# 3. 每个数据集的 L2 距离阈值（range-normalized per-frame L2）
+# 3. Per-dataset L2 distance threshold (range-normalized per-frame L2)
 # ============================================================
-# episode 的 L2 score 超过该数据集阈值则标记为异常
-# 设为 None 表示不做阈值筛选，仅输出报告
-# 建议先跑一遍不设阈值，根据报告中的 p90/p95 统计值来确定
+# Episodes with L2 score exceeding the dataset threshold are flagged as anomalous
+# Set to None to skip threshold filtering and only output the report
+# Recommended: first run without a threshold, then determine based on p90/p95 statistics in the report
 DATASET_L2_THRESHOLD = {
     "BC_Z": 1.0,
     "Bridge": 0.5,
@@ -112,19 +112,19 @@ DATASET_L2_THRESHOLD = {
     "xvla-soft-fold_franka_v3_franka": None,
 }
 
-# 全局默认阈值：当数据集未在 DATASET_L2_THRESHOLD 中配置时使用
-# 设为 None 表示未配置的数据集不做阈值筛选
+# Global default threshold: used when a dataset is not configured in DATASET_L2_THRESHOLD
+# Set to None to skip threshold filtering for unconfigured datasets
 DEFAULT_L2_THRESHOLD = 0.2
 PLOT = False
 NUM_WORKERS = 96
 
-# 数据根目录（Lerobot_v21 的绝对路径）
+# Data root directory (absolute path to Lerobot_v21)
 DATA_ROOT = os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21")
 
-# 查找 meta 时需避开的目录名（不进入这些目录向下找）
+# Directory names to skip when searching for meta (do not descend into these directories)
 SKIP_DIRS = {"video", "videos", "data", "unified_output"}
 
-# episode 元数据文件名（按优先级尝试）
+# Episode metadata filenames (tried in priority order)
 EPISODE_FILENAMES = ["episodes.jsonl", "episode.jsonl"]
 
 

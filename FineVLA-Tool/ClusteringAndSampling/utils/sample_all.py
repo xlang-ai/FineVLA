@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-统一采样入口：按 dataset_name dispatch 到各数据集的采样逻辑。
+Unified sampling entry point: dispatch to each dataset's sampling logic by dataset_name.
 
-用法:
-  python sample_all.py robomind_v1              # 单个数据集
-  python sample_all.py robomind_v1 droid rdt    # 多个数据集
-  python sample_all.py all                      # 全部 8 个
+Usage:
+  python sample_all.py robomind_v1              # single dataset
+  python sample_all.py robomind_v1 droid rdt    # multiple datasets
+  python sample_all.py all                      # all 8 datasets
   python sample_all.py all --workers 64 --check-videos
   python sample_all.py droid --max-tasks 500
 """
@@ -43,7 +43,7 @@ DATASET_DIRS: dict[str, str] = {
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  共用工具
+#  Common Utilities
 # ═════════════════════════════════════════════════════════════════════════════
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -138,16 +138,16 @@ def subdirs(parent: Path) -> list[str]:
 
 
 def get_instruction(tasks_path: Path, ep: dict) -> str | None:
-    # 优先使用 episode 自己的 tasks 字段
+    # Prefer the episode's own tasks field
     if ep.get("tasks"):
         return ep["tasks"][0] if ep["tasks"] else None
 
-    # 如果 episode 没有 tasks 字段，再从 tasks.jsonl 查找
+    # If the episode has no tasks field, look up from tasks.jsonl
     instruction = None
     if tasks_path.exists():
         items = read_jsonl(tasks_path)
         if items:
-            # 如果 episode 有 task_index，根据它查找对应的任务
+            # If episode has task_index, use it to find the corresponding task
             if "task_index" in ep:
                 task_index = ep["task_index"]
                 for item in items:
@@ -155,7 +155,7 @@ def get_instruction(tasks_path: Path, ep: dict) -> str | None:
                         instruction = item.get("task")
                         break
             else:
-                # 没有 task_index，取第一个
+                # No task_index, use the first one
                 instruction = items[0].get("task")
 
     return instruction
@@ -444,7 +444,7 @@ def collect_galaxea(base: Path, check_videos: bool):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  RoboCOIN / RDT — 同一个 "per-task-dir, no steps" 模式
+#  RoboCOIN / RDT -- same "per-task-dir, no steps" pattern
 # ═════════════════════════════════════════════════════════════════════════════
 _COIN_VIEW_ORDER = [
     "cam_high_rgb", "cam_front_rgb", "cam_high_left_rgb", "cam_high_right_rgb",
@@ -721,13 +721,13 @@ def collect_droid(base: Path, check_videos: bool, max_tasks: int = 500):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  统一调度器
+#  Unified Dispatcher
 # ═════════════════════════════════════════════════════════════════════════════
 
 def collect_jobs(dataset_name: str, check_videos: bool, max_tasks: int) -> tuple[list[dict], list[dict]]:
     base = ROOT_DIR / DATASET_DIRS[dataset_name]
     if not base.is_dir():
-        raise ValueError(f"数据集目录不存在: {base}")
+        raise ValueError(f"Dataset directory does not exist: {base}")
 
     extra_skipped: list[dict] = []
 
@@ -748,7 +748,7 @@ def collect_jobs(dataset_name: str, check_videos: bool, max_tasks: int) -> tuple
     elif dataset_name == "droid":
         jobs = collect_droid(base, check_videos, max_tasks)
     else:
-        raise ValueError(f"未知数据集: {dataset_name!r}。可选: {', '.join(sorted(DATASET_DIRS))}")
+        raise ValueError(f"Unknown dataset: {dataset_name!r}. Available: {', '.join(sorted(DATASET_DIRS))}")
 
     return jobs, extra_skipped
 
@@ -765,16 +765,16 @@ def run_sampling(
     max_tasks: int = 500,
 ) -> tuple[list[dict], list[dict]]:
     print(f"\n{'━' * 60}")
-    print(f"采样 [{dataset_name}] → {DATASET_DIRS[dataset_name]}/")
+    print(f"Sampling [{dataset_name}] -> {DATASET_DIRS[dataset_name]}/")
     print(f"{'━' * 60}")
 
     jobs, skipped = collect_jobs(dataset_name, check_videos, max_tasks)
     total = len(jobs)
     if total == 0:
-        print(f"  无可采样的 job")
+        print(f"  No jobs to sample")
         return [], skipped
 
-    print(f"  共 {total} 个采样任务 (workers={workers})")
+    print(f"  Total {total} sampling jobs (workers={workers})")
 
     master_rng = random.Random(SEED)
     seeds = [master_rng.randint(0, 2**63) for _ in range(total)]
@@ -826,17 +826,17 @@ def run_sampling(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="统一采样入口",
+        description="Unified sampling entry point",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "datasets", nargs="+",
-        help="数据集名称，可选:\n  " + "\n  ".join(f"{k:15s} → {v}" for k, v in DATASET_DIRS.items()) + "\n  all → 全部",
+        help="Dataset names. Available:\n  " + "\n  ".join(f"{k:15s} -> {v}" for k, v in DATASET_DIRS.items()) + "\n  all -> all datasets",
     )
     parser.add_argument("--workers", type=int, default=32)
     parser.add_argument("--check-videos", action="store_true")
-    parser.add_argument("--max-tasks", type=int, default=500, help="DROID 最大采样 task 数 (0=全部)")
-    parser.add_argument("--out-dir", type=str, default=None, help="输出目录 (默认: 脚本所在目录)")
+    parser.add_argument("--max-tasks", type=int, default=500, help="Max DROID sampling tasks (0=all)")
+    parser.add_argument("--out-dir", type=str, default=None, help="Output directory (default: script directory)")
     args = parser.parse_args()
 
     if "all" in args.datasets:
@@ -844,7 +844,7 @@ def main():
     else:
         for d in args.datasets:
             if d not in DATASET_DIRS:
-                raise ValueError(f"未知数据集: {d!r}。可选: {', '.join(sorted(DATASET_DIRS))}, all")
+                raise ValueError(f"Unknown dataset: {d!r}. Available: {', '.join(sorted(DATASET_DIRS))}, all")
         dataset_names = args.datasets
 
     out_dir = Path(args.out_dir) if args.out_dir else ROOT_DIR
@@ -858,14 +858,14 @@ def main():
         all_results.extend(results)
         all_skipped.extend(skipped)
 
-    # ── 写 JSONL ──
+    # ── Write JSONL ──
     out_jsonl = out_dir / "all_samples.jsonl"
     with open(out_jsonl, "w", encoding="utf-8") as f:
         for rec in all_results:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     print(f"\n[OK] {out_jsonl}  ({len(all_results)} rows)")
 
-    # ── 写 CSV ──
+    # ── Write CSV ──
     out_csv = out_dir / "all_samples_summary.csv"
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -880,21 +880,21 @@ def main():
             ])
     print(f"[OK] {out_csv}")
 
-    # ── 写 skipped ──
+    # ── Write skipped ──
     out_skip = out_dir / "all_skipped_tasks.json"
     with open(out_skip, "w", encoding="utf-8") as f:
         json.dump(all_skipped, f, indent=2, ensure_ascii=False)
     print(f"[OK] {out_skip}  ({len(all_skipped)} entries)")
 
-    # ── 终端摘要 ──
+    # ── Terminal summary ──
     print(f"\n{'═' * 60}")
-    print(f"全部完成: {len(all_results)} sampled, {len(all_skipped)} skipped")
+    print(f"All done: {len(all_results)} sampled, {len(all_skipped)} skipped")
     ds_cnt = Counter(r["dataset"] for r in all_results)
     rt_cnt = Counter(r["robot_type"] for r in all_results)
-    print(f"\n按 dataset:")
+    print(f"\nBy dataset:")
     for k, v in ds_cnt.most_common():
         print(f"  {k:25s} {v}")
-    print(f"\n按 robot_type:")
+    print(f"\nBy robot_type:")
     for k, v in rt_cnt.most_common():
         print(f"  {k:25s} {v}")
 

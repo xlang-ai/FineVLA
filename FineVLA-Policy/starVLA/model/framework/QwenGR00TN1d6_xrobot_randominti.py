@@ -91,13 +91,13 @@ class Qwen_GR00T(baseframework):
         self.config = config
         self.qwen_vl_interface = get_vlm_model(config=self.config)
 
-        # 增加一个函数，随机打乱 self.qwen_vl_interface 参数
+        # Add a function to randomly reinitialize self.qwen_vl_interface parameters
         self._randomly_initialize_qwen_vl_interface()
         # align dims --> we should put them to config or no?
         self.config.framework.qwenvl.vl_hidden_dim = self.qwen_vl_interface.model.config.hidden_size
         self.config.framework.action_model.diffusion_model_cfg.cross_attention_dim = self.qwen_vl_interface.model.config.hidden_size
 
-        self.action_model: Gr00tN1d6ActionHead = get_action_model(config=self.config)  # 修复后续引用
+        self.action_model: Gr00tN1d6ActionHead = get_action_model(config=self.config)  # fix subsequent type references
 
         self.future_action_window_size = config.framework.action_model.future_action_window_size
         self.past_action_window_size = config.framework.action_model.past_action_window_size
@@ -143,15 +143,15 @@ class Qwen_GR00T(baseframework):
         examples = collate_fn_extend_dim(examples, max_dim=self.config.framework.action_model.action_dim)
         # print(examples)
 
-        batch_images = [example["image"] for example in examples]  #  [B，[PLT]]
+        batch_images = [example["image"] for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
-        actions = [example["action"] for example in examples]  # label [B， len, 7]
+        actions = [example["action"] for example in examples]  # label [B, len, 7]
         
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
         
-        # 2. 增强指令（添加action tokens）
+        # 2. Enhance instructions (add action tokens)
         # print(len(instructions))
-        instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions) # TODO 也应该只需要 examples
+        instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions) # TODO should only need examples
         # print(len(instructions))
         # print("----")
         # print(len(instructions))
@@ -243,12 +243,12 @@ class Qwen_GR00T(baseframework):
             examples = [examples]
 
         examples = collate_fn_extend_dim(examples, max_dim=self.config.framework.action_model.action_dim)
-        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B，[PLT]]
+        batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B, [PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
     
                 
-        # 2. 增强指令（添加action tokens）
-        instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions) # TODO 也应该只需要 examples
+        # 2. Enhance instructions (add action tokens)
+        instructions = self._add_robo_meta_tokens_to_instructions(examples, instructions) # TODO should only need examples
     
         state = [example["state"] for example in examples] if "state" in examples[0] else None  # [B, 1, state_dim]
         
@@ -306,7 +306,7 @@ class Qwen_GR00T(baseframework):
         return {"normalized_actions": normalized_actions}
 
     def _add_robo_meta_tokens_to_instructions(self, examples, instructions):
-        """为不同机器人的 meta info 添加到 instruction 中"""
+        """Add robot-specific meta info to instructions"""
         enhanced_instructions = []
         
         for example, instruction in zip(examples, instructions):
@@ -380,7 +380,7 @@ if __name__ == "__main__":
     print(f"Unnormalized Action: {normalized_actions}")
 
     # # Advance: try forward model with dataloader
-    # # can be fake sample， but here get from dataloader for simpler
+    # # can be fake sample, but here get from dataloader for simpler
     vla_dataset_cfg = cfg.datasets.vla_data
     from torch.utils.data import DataLoader
     from starVLA.dataloader.lerobot_datasets import get_vla_dataset, collate_fn

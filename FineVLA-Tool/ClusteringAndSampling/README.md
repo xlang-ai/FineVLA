@@ -1,262 +1,263 @@
-# VLA 轨迹相似度分析与聚类
+# VLA Trajectory Similarity Analysis and Clustering
 
-基于 **DTW（Dynamic Time Warping）** 对 VLA 数据集中的 EEF 位姿轨迹做**时间弹性对齐**，忽略动作快慢差异，只关注轨迹的空间形状与位姿序列，从而分析不同轨迹之间的相似性并进行聚类。
+Uses **DTW (Dynamic Time Warping)** to perform **temporal elastic alignment** on EEF pose trajectories in VLA datasets, ignoring differences in execution speed and focusing only on spatial shape and pose sequences, thereby analyzing similarity between different trajectories and performing clustering.
 
-## 核心思路
+## Core Idea
 
-### 为什么不能直接逐帧比较？
+### Why can't we compare frames directly?
 
-同一个动作可能做得快或慢，甚至**局部快慢不一致**（A 轨迹的中间一段比 B 快，另一段又比 B 慢）。直接逐帧对比会因为时间轴不对齐而得到错误的距离。
+The same action can be performed faster or slower, and even with **locally inconsistent speeds** (one segment of trajectory A is faster than B, while another segment is slower). Direct frame-by-frame comparison yields incorrect distances due to temporal misalignment.
 
-### DTW 如何解决？
+### How does DTW solve this?
 
-DTW 在两条轨迹之间寻找一条**非线性的对齐路径**：
-- 某一段 A 多帧对 B 一帧（A 这段更慢）
-- 另一段 A 一帧对 B 多帧（A 这段更快）
-- 再一段一帧对一帧
+DTW finds a **nonlinear alignment path** between two trajectories:
+- In some segments, multiple frames of A align to one frame of B (A is slower in that segment)
+- In other segments, one frame of A aligns to multiple frames of B (A is faster in that segment)
+- In other segments, frames align one-to-one
 
-对齐是**逐段、逐位置**的，不是整条轨迹只用一个缩放系数，因此能处理局部快慢不一致的情况。
+The alignment is **segment-by-segment, position-by-position**, rather than using a single scaling factor for the entire trajectory, thus handling locally inconsistent speeds.
 
-## DTW 算法详解
+## DTW Algorithm in Detail
 
-### 1. 问题定义
+### 1. Problem Definition
 
-给定两条轨迹：
-- 轨迹 A：`a₁, a₂, ..., aₙ`（N 帧）
-- 轨迹 B：`b₁, b₂, ..., bₘ`（M 帧）
+Given two trajectories:
+- Trajectory A: `a_1, a_2, ..., a_N` (N frames)
+- Trajectory B: `b_1, b_2, ..., b_M` (M frames)
 
-每帧是一个 8 维向量 `[x, y, z, qx, qy, qz, qw, gripper]`。
+Each frame is an 8-dimensional vector `[x, y, z, qx, qy, qz, qw, gripper]`.
 
-DTW 的目标是找到一条**对齐路径（warp path）** `W = (w₁, w₂, ..., wₖ)`，其中每个 `wₜ = (iₜ, jₜ)` 表示"轨迹 A 的第 iₜ 帧 与 轨迹 B 的第 jₜ 帧对齐"，使得路径上所有帧对的代价之和最小。
+The goal of DTW is to find a **warp path** `W = (w_1, w_2, ..., w_K)`, where each `w_t = (i_t, j_t)` means "frame i_t of trajectory A aligns with frame j_t of trajectory B", minimizing the total cost along the path.
 
-### 2. 单帧代价函数
+### 2. Per-frame Cost Function
 
-每对帧 `(aᵢ, bⱼ)` 的代价由三部分加权组合：
+The cost for each frame pair `(a_i, b_j)` is a weighted combination of three components:
 
-| 分量 | 公式 | 说明 |
-|------|------|------|
-| **位置** | `d_pos = sqrt((x₁-x₂)² + (y₁-y₂)² + (z₁-z₂)²)` | EEF 位置的欧氏距离（米） |
-| **姿态** | `d_rot = 2·arccos(min(\|q₁·q₂\|, 1.0))` | 四元数测地线角距离（弧度） |
-| **夹爪** | `d_grip = \|g₁ - g₂\|` | 夹爪开合度的差值 |
+| Component | Formula | Description |
+|-----------|---------|-------------|
+| **Position** | `d_pos = sqrt((x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2)` | Euclidean distance of EEF position (meters) |
+| **Orientation** | `d_rot = 2*arccos(min(\|q1*q2\|, 1.0))` | Quaternion geodesic angular distance (radians) |
+| **Gripper** | `d_grip = \|g1 - g2\|` | Gripper openness difference |
 
-总代价：
-
-```
-cost(i, j) = w_pos × d_pos + w_rot × d_rot + w_grip × d_grip
-```
-
-**关于四元数测地线角距离**：
-
-单位四元数 `q = (qx, qy, qz, qw)` 表示一个 3D 旋转。两个姿态之间的旋转角度等于相对旋转四元数的角度，而相对旋转四元数的标量部分恰好是两个四元数的 4D 点积。因此：
+Total cost:
 
 ```
-d_rot = 2 · arccos(|q₁ · q₂|)
+cost(i, j) = w_pos * d_pos + w_rot * d_rot + w_grip * d_grip
 ```
 
-- 取绝对值 `|q₁·q₂|` 是因为 `q` 与 `-q` 表示同一个旋转
-- `clip` 到 1.0 是防止浮点误差导致 `arccos` 返回 NaN
-- 值域为 `[0, π]`，即 0 到 180 度
+**About quaternion geodesic angular distance**:
 
-### 3. 动态规划递推
+A unit quaternion `q = (qx, qy, qz, qw)` represents a 3D rotation. The rotation angle between two orientations equals the angle of the relative rotation quaternion, and the scalar part of the relative rotation quaternion is precisely the 4D dot product of the two quaternions. Therefore:
 
-DTW 使用动态规划求解最优对齐路径。定义 `dp[i][j]` 为轨迹 A 的前 i 帧与轨迹 B 的前 j 帧的最优累计代价。
+```
+d_rot = 2 * arccos(|q1 * q2|)
+```
 
-**递推公式**：
+- The absolute value `|q1*q2|` is used because `q` and `-q` represent the same rotation
+- Clipping to 1.0 prevents `arccos` from returning NaN due to floating-point errors
+- The range is `[0, pi]`, i.e., 0 to 180 degrees
+
+### 3. Dynamic Programming Recurrence
+
+DTW uses dynamic programming to find the optimal alignment path. Define `dp[i][j]` as the optimal cumulative cost for aligning the first i frames of trajectory A with the first j frames of trajectory B.
+
+**Recurrence formula**:
 
 ```
 dp[0][0] = 0
-dp[i][j] = cost(i, j) + min(dp[i-1][j-1],   ← 对角线：一对一匹配
-                             dp[i-1][j],       ← 垂直：A 的当前帧"重复"对齐 B 的多帧
-                             dp[i][j-1])        ← 水平：B 的当前帧"重复"对齐 A 的多帧
+dp[i][j] = cost(i, j) + min(dp[i-1][j-1],   <- diagonal: one-to-one match
+                             dp[i-1][j],       <- vertical: current frame of A "repeats" to align multiple frames of B
+                             dp[i][j-1])        <- horizontal: current frame of B "repeats" to align multiple frames of A
 ```
 
-**直观理解**——三种转移方向对应三种时间对齐方式：
+**Intuitive understanding** -- the three transition directions correspond to three temporal alignment modes:
 
 ```
-           j (轨迹 B)
-           →
-    ┌──────────────────┐
-    │  ╲  ← 对角(1:1)  │
-  i │   ╲              │
-(A) │    ╲             │
-  ↓ │ ↓重复A帧         │
-    │     →重复B帧      │
-    └──────────────────┘
+           j (Trajectory B)
+           ->
+    +------------------+
+    |  \  <- diagonal(1:1)  |
+  i |   \              |
+(A) |    \             |
+  v | v repeat A frame |
+    |     -> repeat B frame |
+    +------------------+
 ```
 
-- **对角线 `dp[i-1][j-1]`**：A 的第 i 帧与 B 的第 j 帧一对一匹配，双方时间同步推进
-- **垂直 `dp[i-1][j]`**：A 前进一帧，B 不动 —— 相当于 A 的这一段比 B 慢（A 的多帧对 B 的同一帧）
-- **水平 `dp[i][j-1]`**：B 前进一帧，A 不动 —— 相当于 B 的这一段比 A 慢（B 的多帧对 A 的同一帧）
+- **Diagonal `dp[i-1][j-1]`**: Frame i of A matches frame j of B one-to-one, both sides advance in sync
+- **Vertical `dp[i-1][j]`**: A advances one frame, B stays -- A is slower in this segment (multiple A frames align to the same B frame)
+- **Horizontal `dp[i][j-1]`**: B advances one frame, A stays -- B is slower in this segment (multiple B frames align to the same A frame)
 
-最终 `dp[N][M]` 就是两条轨迹的 DTW 原始距离。
+The final `dp[N][M]` is the raw DTW distance between the two trajectories.
 
-**时间复杂度**：O(N × M)，对于 ~700 帧的轨迹，矩阵大小约 700×700 = 49 万个元素。
+**Time complexity**: O(N * M). For trajectories of ~700 frames, the matrix size is about 700x700 = 490,000 elements.
 
-### 4. Sakoe-Chiba 窗口约束
+### 4. Sakoe-Chiba Window Constraint
 
-无约束 DTW 允许任意弯曲的对齐路径，但：
-- 计算量为完整的 O(N × M)
-- 可能出现病态对齐（如 A 的第 1 帧匹配 B 的最后一帧）
+Unconstrained DTW allows arbitrarily warped alignment paths, but:
+- Computation is the full O(N * M)
+- Pathological alignments may occur (e.g., frame 1 of A matching the last frame of B)
 
-**Sakoe-Chiba 窗口**限制对齐路径只能在对角线附近 `±w` 的带状区域内：
-
-```
-           j (轨迹 B)
-    ┌──────────────────┐
-    │╲▓▓▓              │   ▓ = 允许计算的区域
-    │ ╲▓▓▓▓            │   （对角线 ± window）
-    │  ╲▓▓▓▓           │
-    │   ╲▓▓▓▓          │   空白 = 跳过，保持 ∞
-    │    ╲▓▓▓▓         │
-    │     ╲▓▓▓▓        │
-    │      ╲▓▓▓        │
-    └──────────────────┘
-```
-
-- 对齐路径上 `|i - j| ≤ w` 才计算，超出范围的 `dp[i][j]` 保持 `∞`
-- 复杂度降为 **O(N × window)**，例如 window=100 时只需计算 700×200 = 14 万个元素
-- 当 `|N - M| > window` 时，自动扩展窗口为 `max(window, |N - M|)` 以保证路径可达
-
-### 5. 路径回溯与归一化
-
-DTW 的原始距离 `dp[N][M]` 会随轨迹长度增长（路径越长，累加的代价越多）。为了使不同长度的轨迹对的距离可比较，需要做**归一化**。
-
-**回溯**：从 `dp[N][M]` 出发，每步选择 `dp[i-1][j-1]`、`dp[i-1][j]`、`dp[i][j-1]` 中最小的前驱，直到回溯到 `dp[0][0]`，经过的步数即为路径长度 `L`。
+The **Sakoe-Chiba window** restricts the alignment path to a band of +/-w around the diagonal:
 
 ```
-归一化距离 = dp[N][M] / L
+           j (Trajectory B)
+    +------------------+
+    |\###              |   # = allowed computation region
+    | \####            |   (diagonal +/- window)
+    |  \####           |
+    |   \####          |   blank = skipped, stays at infinity
+    |    \####         |
+    |     \####        |
+    |      \###        |
+    +------------------+
 ```
 
-这样每对轨迹得到的是"平均每步代价"，消除了轨迹长度对距离的放大效应。
+- Only `|i - j| <= w` is computed on the alignment path; `dp[i][j]` beyond the range stays at infinity
+- Complexity reduces to **O(N * window)**, e.g., with window=100, only 700x200 = 140,000 elements need computing
+- When `|N - M| > window`, the window automatically expands to `max(window, |N - M|)` to ensure path reachability
 
-**带窗口模式**的归一化：由于不保存完整 dp 矩阵（只返回最终值），使用近似归一化 `dp[N][M] / (N + M)`，其中 `N + M` 是路径长度的上界。
+### 5. Path Backtracing and Normalization
 
-### 6. 完整计算流程（以两条轨迹为例）
+The raw DTW distance `dp[N][M]` grows with trajectory length (longer paths accumulate more cost). To make distances comparable between trajectory pairs of different lengths, **normalization** is needed.
+
+**Backtracing**: Starting from `dp[N][M]`, at each step choose the smallest predecessor among `dp[i-1][j-1]`, `dp[i-1][j]`, `dp[i][j-1]`, until reaching `dp[0][0]`. The number of steps traversed is the path length `L`.
 
 ```
-轨迹 A: (649, 8)   轨迹 B: (771, 8)
-         │                    │
-         ▼                    ▼
-    ┌─────────────────────────────┐
-    │  对每对 (i,j) 计算 frame_cost │  → 位置L2 + 四元数角 + 夹爪差
-    └─────────────────────────────┘
-                  │
-                  ▼
-    ┌─────────────────────────────┐
-    │  DP 填表: dp[i][j] =        │
-    │    cost(i,j) + min(三个前驱) │  → O(649 × 771) ≈ 50万次
-    └─────────────────────────────┘
-                  │
-                  ▼
-    ┌─────────────────────────────┐
-    │  dp[649][771] = 原始DTW距离  │
-    │  回溯路径长度 L ≈ 1000步     │
-    │  归一化距离 = dp / L         │
-    └─────────────────────────────┘
-                  │
-                  ▼
-           距离 ≈ 0.329
+Normalized distance = dp[N][M] / L
 ```
 
-### 7. 批量距离矩阵
+This gives the "average cost per step" for each trajectory pair, eliminating the amplification effect of trajectory length on distance.
 
-对 N 条轨迹，需要计算 `N × (N-1) / 2` 个配对（对称矩阵只算上三角）。
+**Windowed mode** normalization: Since the full dp matrix is not saved (only the final value is returned), approximate normalization `dp[N][M] / (N + M)` is used, where `N + M` is an upper bound on path length.
 
-- 100 条轨迹 → 4950 对
-- 支持 `n_jobs > 1` 时通过 `multiprocessing.Pool` 并行加速
-- 计算完成后自动缓存为 `.npz` 文件，后续可直接加载跳过 DTW 计算
+### 6. Complete Computation Flow (Two Trajectories as Example)
 
-### 8. 性能优化
+```
+Trajectory A: (649, 8)   Trajectory B: (771, 8)
+         |                    |
+         v                    v
+    +-------------------------------+
+    |  For each (i,j) compute       |  -> position L2 + quaternion angle + gripper diff
+    |  frame_cost                   |
+    +-------------------------------+
+                  |
+                  v
+    +-------------------------------+
+    |  DP table fill: dp[i][j] =    |
+    |    cost(i,j) + min(3 predecessors) |  -> O(649 * 771) ~ 500K iterations
+    +-------------------------------+
+                  |
+                  v
+    +-------------------------------+
+    |  dp[649][771] = raw DTW dist  |
+    |  Backtrace path length L~1000 |
+    |  Normalized dist = dp / L     |
+    +-------------------------------+
+                  |
+                  v
+           Distance ~ 0.329
+```
 
-| 手段 | 效果 |
-|------|------|
-| **numba @njit** | 所有 DP 循环 JIT 编译为机器码，~700 帧的轨迹对 ~10ms |
-| **Sakoe-Chiba 窗口** | 复杂度从 O(N×M) 降到 O(N×window) |
-| **多进程并行** | `n_jobs` 个 worker 同时计算不同轨迹对 |
-| **缓存复用** | 距离矩阵存 `.npz`，调参时无需重算 |
+### 7. Batch Distance Matrix
 
-## 文件结构
+For N trajectories, `N * (N-1) / 2` pairs need to be computed (symmetric matrix, only upper triangle).
+
+- 100 trajectories -> 4950 pairs
+- Supports `n_jobs > 1` for parallel acceleration via `multiprocessing.Pool`
+- After computation, automatically cached as `.npz` files; subsequent runs can load directly and skip DTW computation
+
+### 8. Performance Optimizations
+
+| Technique | Effect |
+|-----------|--------|
+| **numba @njit** | All DP loops JIT-compiled to machine code, ~10ms per ~700-frame trajectory pair |
+| **Sakoe-Chiba window** | Complexity reduced from O(N*M) to O(N*window) |
+| **Multi-process parallelism** | `n_jobs` workers compute different trajectory pairs simultaneously |
+| **Cache reuse** | Distance matrix saved as `.npz`; no recomputation when tuning parameters |
+
+## File Structure
 
 ```
 ClusteringAndSampling/
-├── README.md                              # 本文件
-├── requirements.txt                       # Python 依赖
-├── config.py                              # 数据集配置（目录结构、字段映射、DTW 参数）
-├── run_analysis.py                        # 单数据集聚类分析入口
-├── batch_run.py                           # 批量运行所有数据集的聚类分析
-├── batch_run_by_task.py                   # 按 task 分组聚类（适用于 BC_Z/RT-1 等）
-├── collect_cluster_representation.py      # 收集每 cluster 代表性 episode
-├── sample_filtered_episodes.py            # 从过滤后的数据集中随机采样
+├── README.md                              # This file
+├── requirements.txt                       # Python dependencies
+├── config.py                              # Dataset configs (directory structure, field mapping, DTW parameters)
+├── run_analysis.py                        # Single-dataset clustering analysis entry point
+├── batch_run.py                           # Batch clustering analysis for all datasets
+├── batch_run_by_task.py                   # Per-task clustering (for BC_Z/RT-1 etc.)
+├── collect_cluster_representation.py      # Collect representative episodes per cluster
+├── sample_filtered_episodes.py            # Random sampling from filtered datasets
 └── utils/
     ├── __init__.py
-    ├── trajectory_loader.py               # 轨迹数据加载模块
-    ├── dtw_distance.py                    # DTW 距离计算（numba JIT 加速）
-    ├── clustering_analysis.py             # 聚类算法 + 可视化
-    └── sample_all.py                      # 采样与记录生成工具
+    ├── trajectory_loader.py               # Trajectory data loading module
+    ├── dtw_distance.py                    # DTW distance computation (numba JIT accelerated)
+    ├── clustering_analysis.py             # Clustering algorithms + visualization
+    └── sample_all.py                      # Sampling and record generation utilities
 ```
 
-### `trajectory_loader.py` — 轨迹加载
+### `trajectory_loader.py` -- Trajectory Loading
 
-- **`Trajectory` 数据类**：封装单条轨迹，核心属性 `combined` 为 `(T, 8)` 矩阵
-  - 前 3 列：xyz 位置
-  - 第 4-7 列：四元数 (qx, qy, qz, qw)
-  - 第 8 列：夹爪开合度
-- **`load_trajectories()`**：扫描 `data/chunk-*/episode_*.parquet`，自动读取 `meta/modality.json` 映射列名，按 `episode_index` 拆分轨迹
-- 支持 `--side right/left` 切换左右臂
+- **`Trajectory` dataclass**: Encapsulates a single trajectory; core attribute `combined` is a `(T, 8)` matrix
+  - Columns 0-2: xyz position
+  - Columns 3-6: quaternion (qx, qy, qz, qw)
+  - Column 7: gripper openness
+- **`load_trajectories()`**: Scans `data/chunk-*/episode_*.parquet`, automatically reads `meta/modality.json` to map column names, splits trajectories by `episode_index`
+- Supports `--side right/left` to switch between arms
 
-### `dtw_distance.py` — DTW 核心
+### `dtw_distance.py` -- DTW Core
 
-各函数与上文"DTW 算法详解"各节对应：
+Each function corresponds to the sections in "DTW Algorithm in Detail" above:
 
-| 函数 | 对应章节 | 说明 |
-|------|----------|------|
-| `_quat_geodesic()` | §2 单帧代价 | 四元数测地线角 `2·arccos(\|q₁·q₂\|)` |
-| `frame_cost()` | §2 单帧代价 | 位置 L2 + 四元数角 + 夹爪差的加权和 |
-| `_dtw_cost_matrix()` | §3 动态规划 | 标准 O(N×M) DP 填表 |
-| `_dtw_with_window()` | §4 窗口约束 | Sakoe-Chiba 带状约束，O(N×window) |
-| `_backtrace_length()` | §5 路径回溯 | 从 `dp[N][M]` 回溯路径长度用于归一化 |
-| `dtw_distance()` | §6 完整流程 | 统一接口：选择有/无窗口 + 可选归一化 |
-| `compute_distance_matrix()` | §7 批量矩阵 | N×N 对称距离矩阵，支持多进程并行 |
+| Function | Section | Description |
+|----------|---------|-------------|
+| `_quat_geodesic()` | S2 Per-frame cost | Quaternion geodesic angle `2*arccos(\|q1*q2\|)` |
+| `frame_cost()` | S2 Per-frame cost | Weighted sum of position L2 + quaternion angle + gripper diff |
+| `_dtw_cost_matrix()` | S3 Dynamic programming | Standard O(N*M) DP table fill |
+| `_dtw_with_window()` | S4 Window constraint | Sakoe-Chiba band constraint, O(N*window) |
+| `_backtrace_length()` | S5 Path backtracing | Backtrace path length from `dp[N][M]` for normalization |
+| `dtw_distance()` | S6 Complete flow | Unified interface: with/without window + optional normalization |
+| `compute_distance_matrix()` | S7 Batch matrix | N*N symmetric distance matrix with multi-process support |
 
-所有 DP 函数使用 `numba @njit(cache=True)` 编译，首次调用 JIT 编译后缓存机器码，后续调用 ~700 帧的轨迹对仅需 ~10ms
+All DP functions use `numba @njit(cache=True)` compilation; after the first JIT compilation the machine code is cached, subsequent calls take ~10ms per ~700-frame trajectory pair.
 
-### `clustering_analysis.py` — 聚类与可视化
+### `clustering_analysis.py` -- Clustering and Visualization
 
-聚类方法：
+Clustering methods:
 
-| 方法 | 函数 | 特点 |
-|------|------|------|
-| 层次聚类 | `hierarchical_clustering()` | 支持 average/complete/single/ward，生成树状图 |
-| K-Medoids | `kmedoids_clustering()` | 直接基于距离矩阵，输出每个簇的代表性轨迹（medoid） |
+| Method | Function | Features |
+|--------|----------|----------|
+| Hierarchical | `hierarchical_clustering()` | Supports average/complete/single/ward, generates dendrogram |
+| K-Medoids | `kmedoids_clustering()` | Directly based on distance matrix, outputs representative trajectory (medoid) per cluster |
 
-可视化输出：
+Visualization outputs:
 
-| 图表 | 函数 | 说明 |
-|------|------|------|
-| 距离热力图 | `plot_distance_heatmap()` | N×N 矩阵，按聚类排序，同簇轨迹聚集成色块 |
-| 树状图 | `plot_dendrogram()` | 层次聚类合并过程 |
-| MDS 散点图 | `plot_mds_embedding()` | 距离矩阵降维到 2D，按聚类上色 |
+| Chart | Function | Description |
+|-------|----------|-------------|
+| Distance heatmap | `plot_distance_heatmap()` | N*N matrix sorted by cluster; same-cluster trajectories form color blocks |
+| Dendrogram | `plot_dendrogram()` | Hierarchical clustering merge process |
+| MDS scatter plot | `plot_mds_embedding()` | Distance matrix reduced to 2D, colored by cluster |
 
-### `run_analysis.py` — 主入口
+### `run_analysis.py` -- Main Entry Point
 
-4 步流水线：
+4-step pipeline:
 
 ```
-[1/4] 加载轨迹    → 读 parquet，提取 (T, 8) 序列
-[2/4] DTW 距离    → 计算 N×N 距离矩阵，自动缓存为 .npz
-[3/4] 聚类        → 层次聚类 + K-Medoids，打印各簇成员
-[4/4] 可视化      → 输出热力图、树状图、MDS 散点图
+[1/4] Load trajectories -> Read parquet, extract (T, 8) sequences
+[2/4] DTW distances     -> Compute N*N distance matrix, auto-cached as .npz
+[3/4] Clustering        -> Hierarchical clustering + K-Medoids, print cluster members
+[4/4] Visualization     -> Output heatmap, dendrogram, MDS scatter plot
 ```
 
-## 安装依赖
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 使用方式
+## Usage
 
-### 基本用法
+### Basic Usage
 
 ```bash
 python run_analysis.py \
@@ -266,7 +267,7 @@ python run_analysis.py \
     --output_dir ./results
 ```
 
-### 加速（窗口约束 + 多进程）
+### Speedup (Window Constraint + Multi-process)
 
 ```bash
 python run_analysis.py \
@@ -277,7 +278,7 @@ python run_analysis.py \
     --output_dir ./results
 ```
 
-### 从缓存加载（跳过 DTW，直接聚类）
+### Load from Cache (Skip DTW, Cluster Directly)
 
 ```bash
 python run_analysis.py \
@@ -286,7 +287,7 @@ python run_analysis.py \
     --n_clusters 3
 ```
 
-### 快速调试（只取前 10 条轨迹）
+### Quick Debug (Only First 10 Trajectories)
 
 ```bash
 python run_analysis.py \
@@ -296,43 +297,43 @@ python run_analysis.py \
     --output_dir ./results_test
 ```
 
-## 命令行参数
+## Command-line Arguments
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--dataset_root` | 必填 | 数据集根目录（包含 `data/` 和 `meta/`） |
-| `--side` | `right` | 分析哪只手臂：`right` 或 `left` |
-| `--max_episodes` | 全部 | 最多加载几条轨迹 |
-| `--w_pos` | `1.0` | 位置距离权重 |
-| `--w_rot` | `1.0` | 姿态距离权重 |
-| `--w_grip` | `0.5` | 夹爪距离权重 |
-| `--normalize` | `True` | DTW 距离按路径长度归一化 |
-| `--window` | 无约束 | Sakoe-Chiba 窗口大小（推荐 50~200） |
-| `--n_jobs` | `1` | 并行进程数 |
-| `--n_clusters` | `5` | 聚类数 |
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--dataset_root` | Required | Dataset root directory (containing `data/` and `meta/`) |
+| `--side` | `right` | Which arm to analyze: `right` or `left` |
+| `--max_episodes` | All | Maximum number of trajectories to load |
+| `--w_pos` | `1.0` | Position distance weight |
+| `--w_rot` | `1.0` | Orientation distance weight |
+| `--w_grip` | `0.5` | Gripper distance weight |
+| `--normalize` | `True` | Normalize DTW distance by path length |
+| `--window` | Unconstrained | Sakoe-Chiba window size (recommended 50~200) |
+| `--n_jobs` | `1` | Number of parallel processes |
+| `--n_clusters` | `5` | Number of clusters |
 | `--cluster_method` | `both` | `hierarchical` / `kmedoids` / `both` |
-| `--linkage_method` | `average` | 层次聚类 linkage：`average`/`complete`/`single`/`ward` |
-| `--output_dir` | `./results` | 输出目录 |
-| `--load_cache` | 无 | 加载已有距离矩阵 `.npz` 文件 |
+| `--linkage_method` | `average` | Hierarchical clustering linkage: `average`/`complete`/`single`/`ward` |
+| `--output_dir` | `./results` | Output directory |
+| `--load_cache` | None | Load existing distance matrix `.npz` file |
 
-## 输出文件
+## Output Files
 
-| 文件 | 说明 |
-|------|------|
-| `distance_matrix.npz` | N×N DTW 距离矩阵 + episode_ids（可复用） |
-| `cluster_labels.npz` | 聚类标签 + medoid 索引 |
-| `distance_heatmap.png` | 距离矩阵热力图 |
-| `dendrogram.png` | 层次聚类树状图 |
-| `mds_embedding.png` | MDS 2D 散点图 |
+| File | Description |
+|------|-------------|
+| `distance_matrix.npz` | N*N DTW distance matrix + episode_ids (reusable) |
+| `cluster_labels.npz` | Cluster labels + medoid indices |
+| `distance_heatmap.png` | Distance matrix heatmap |
+| `dendrogram.png` | Hierarchical clustering dendrogram |
+| `mds_embedding.png` | MDS 2D scatter plot |
 
-## 数据格式要求
+## Data Format Requirements
 
-数据集目录结构需为 LeRobot v2.1 格式：
+The dataset directory structure must follow LeRobot v2.1 format:
 
 ```
 dataset_root/
 ├── meta/
-│   └── modality.json      # 字段映射（可选，无则使用默认列名）
+│   └── modality.json      # Field mapping (optional; defaults used if absent)
 └── data/
     ├── chunk-000/
     │   ├── episode_000000.parquet
@@ -342,10 +343,10 @@ dataset_root/
         └── ...
 ```
 
-parquet 中需包含以下列（以 right 为例）：
+The parquet files must contain the following columns (using right arm as example):
 
-| 列名 | 维度 | 含义 |
-|------|------|------|
+| Column | Dimensions | Description |
+|--------|-----------|-------------|
 | `observation.state.right_ee_pose` | 7 | xyz(3) + quaternion_xyzw(4) |
-| `observation.state.right_gripper` | 1 | 夹爪开合度 |
-| `episode_index` | 1 | episode 编号（用于拆分轨迹） |
+| `observation.state.right_gripper` | 1 | Gripper openness |
+| `episode_index` | 1 | Episode number (used for splitting trajectories) |

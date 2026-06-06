@@ -1,5 +1,6 @@
 
-# 这里包含了我们自己内部使用的 全部标本， 它们用于先快速的评测 全部task。
-# 全自动评测 会和使用的平台有些绑定，使用我们无法确定是否在用户自己的平台依然有效，
-# 我们发出来只是提供更多的参考， 具体原理还是参考 `examples/LIBERO/README.md`
+# This directory contains all the scripts used internally for quick evaluation of all tasks.
+# The fully automated evaluation is somewhat tied to the platform we use, so we cannot guarantee
+# it will work on your own platform. We provide these scripts only as additional reference.
+# For the underlying principles, please refer to `examples/LIBERO/README.md`.
 

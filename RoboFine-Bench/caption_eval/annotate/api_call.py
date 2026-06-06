@@ -21,7 +21,7 @@ logger = logging.getLogger("annotation")
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 MAX_RETRIES = 5
 DOUBAO_MAX_FRAMES = 150
-GPT_MAX_FRAMES = 500
+GPT_MAX_FRAMES = 250
 
 
 # ---------------------------------------------------------------------------

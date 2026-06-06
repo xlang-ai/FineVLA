@@ -171,18 +171,24 @@ def load_completed(output_path: str) -> Set[str]:
 # Image parts construction
 # ---------------------------------------------------------------------------
 
+def _filter_views(view_names: List[str]) -> List[str]:
+    """Filter views: 3 views -> keep only main (index 0); otherwise keep all."""
+    if len(view_names) == 3:
+        return [view_names[0]]
+    return view_names
+
+
 def build_image_parts(
     view_names: List[str],
     frame_views: Dict,
 ) -> Tuple[List[Dict], int, int]:
     """Build image_parts list from frame_index views.
 
-    For single-view: flat list of image_url dicts.
-    For multi-view: interleaved [View: label] text + image_url dicts.
+    Always includes [View: label] tags. For 3-view samples, only the main view is used.
 
     Returns: (image_parts, num_views_used, total_frames)
     """
-    is_multi = len(view_names) > 1
+    view_names = _filter_views(view_names)
     image_parts = []
     total_frames = 0
     views_used = 0
@@ -194,9 +200,8 @@ def build_image_parts(
             continue
         views_used += 1
 
-        if is_multi:
-            label = classify_view(vn, i)
-            image_parts.append({"type": "text", "text": f"[View: {label}]"})
+        label = classify_view(vn, i)
+        image_parts.append({"type": "text", "text": f"[View: {label}]"})
 
         for url in urls:
             image_parts.append({"type": "image_url", "image_url": {"url": url}})
@@ -270,12 +275,13 @@ def build_image_parts_from_video(
 ) -> Tuple[List[Dict], int, int]:
     """Build image_parts by decoding local video files.
 
+    Always includes [View: label] tags. For 3-view samples, only the main view is used.
+
     Returns: (image_parts, num_views_used, total_frames)
     """
-    view_names = sample.get("meta", {}).get("view_names", [])
+    view_names = _filter_views(sample.get("meta", {}).get("view_names", []))
     dataset = sample.get("dataset", "")
     sid = sample["sample_id"]
-    is_multi = len(view_names) > 1
     image_parts = []
     total_frames = 0
     views_used = 0
@@ -289,9 +295,8 @@ def build_image_parts_from_video(
         if not parts:
             continue
 
-        if is_multi:
-            label = classify_view(vn, i)
-            image_parts.append({"type": "text", "text": f"[View: {label}]"})
+        label = classify_view(vn, i)
+        image_parts.append({"type": "text", "text": f"[View: {label}]"})
 
         image_parts.extend(parts)
         total_frames += len(parts)
@@ -316,7 +321,8 @@ def process_one_sample(
     """Process a single sample: build image_parts or video_urls, call API, parse response."""
     sid = sample["sample_id"]
     dataset = sample.get("dataset", "")
-    view_names = sample.get("meta", {}).get("view_names", [])
+    view_names_raw = sample.get("meta", {}).get("view_names", [])
+    view_names = _filter_views(view_names_raw)
     instruction_raw = sample.get("instruction_raw", "")
 
     video_urls = None
@@ -325,9 +331,14 @@ def process_one_sample(
     num_frames = 0
 
     if input_type == "video":
-        # Extract video URLs from EvalSets.json views field
-        sample_video_urls = [u for u in sample.get("views", {}).values()
-                            if isinstance(u, str) and u.startswith("http")]
+        # Extract video URLs matching filtered view_names (view1, view2, ... in order)
+        views_dict = sample.get("views", {})
+        sample_video_urls = []
+        for i in range(len(view_names)):
+            key = f"view{i+1}"
+            url = views_dict.get(key, "")
+            if isinstance(url, str) and url.startswith("http"):
+                sample_video_urls.append(url)
         if sample_video_urls:
             video_urls = sample_video_urls
             num_views = len(video_urls)

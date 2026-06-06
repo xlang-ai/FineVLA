@@ -1,6 +1,6 @@
 """
-从 LeRobot v2.1 parquet 文件中加载轨迹数据。
-支持多种数据集格式：
+Load trajectory data from LeRobot v2.1 parquet files.
+Supports multiple dataset formats:
   - EEF quaternion (Galaxea, RT-1, agibotworld)
   - EEF euler (Bridge, BC_Z, droid, RoboCOIN, egodex)
   - Joint-only (RDT, RH20T, RoboMindV2)
@@ -22,14 +22,14 @@ from config import DatasetConfig, ArmConfig
 
 
 # ═══════════════════════════════════════════════════════════
-#  Trajectory 数据结构
+#  Trajectory Data Structure
 # ═══════════════════════════════════════════════════════════
 
 @dataclass
 class Trajectory:
     episode_id: int
     file_path: str
-    combined: np.ndarray       # (T, D) 统一格式的轨迹向量
+    combined: np.ndarray       # (T, D) unified trajectory vector
     rot_type: str = "quaternion"
 
     @property
@@ -42,13 +42,13 @@ class Trajectory:
 
 
 # ═══════════════════════════════════════════════════════════
-#  Euler → Quaternion 转换
+#  Euler -> Quaternion Conversion
 # ═══════════════════════════════════════════════════════════
 
 def euler_to_quat(roll: np.ndarray, pitch: np.ndarray, yaw: np.ndarray) -> np.ndarray:
     """
-    将 Euler 角 (roll, pitch, yaw) 批量转为 quaternion (qx, qy, qz, qw)。
-    输入 shape: (T,) 各一列，输出 shape: (T, 4)。
+    Batch-convert Euler angles (roll, pitch, yaw) to quaternion (qx, qy, qz, qw).
+    Input shape: (T,) per column; output shape: (T, 4).
     """
     cr, sr = np.cos(roll / 2), np.sin(roll / 2)
     cp, sp = np.cos(pitch / 2), np.sin(pitch / 2)
@@ -63,11 +63,11 @@ def euler_to_quat(roll: np.ndarray, pitch: np.ndarray, yaw: np.ndarray) -> np.nd
 
 
 # ═══════════════════════════════════════════════════════════
-#  Parquet 列解析
+#  Parquet Column Parsing
 # ═══════════════════════════════════════════════════════════
 
 def _parse_column(col) -> np.ndarray:
-    """将 parquet 中一列（可能是 ndarray/list/scalar）转为 (N, D) 数组。"""
+    """Convert a parquet column (possibly ndarray/list/scalar) into an (N, D) array."""
     first = col.iloc[0]
     if isinstance(first, np.ndarray):
         return np.stack(col.values).astype(np.float64)
@@ -78,7 +78,7 @@ def _parse_column(col) -> np.ndarray:
 
 
 def _concat_columns(df, column_names: list[str]) -> np.ndarray:
-    """从 DataFrame 中提取多列并水平拼接为 (T, D) 数组。"""
+    """Extract multiple columns from a DataFrame and horizontally concatenate into a (T, D) array."""
     arrays = []
     for col_name in column_names:
         if col_name not in df.columns:
@@ -90,7 +90,7 @@ def _concat_columns(df, column_names: list[str]) -> np.ndarray:
 
 
 # ═══════════════════════════════════════════════════════════
-#  核心: 按 config 构建轨迹向量
+#  Core: Build Trajectory Vector from Config
 # ═══════════════════════════════════════════════════════════
 
 def _build_combined_vector(
@@ -99,12 +99,12 @@ def _build_combined_vector(
     rot_type: str,
 ) -> np.ndarray:
     """
-    根据 ArmConfig 从 DataFrame 构建统一的轨迹向量。
+    Build a unified trajectory vector from a DataFrame according to the ArmConfig.
 
-    返回格式:
-      rot_type == "quaternion" → [x, y, z, qx, qy, qz, qw, gripper]  (8D)
-      rot_type == "euler"      → 先转 quat → [x, y, z, qx, qy, qz, qw, gripper]  (8D)
-      rot_type == "none"       → [joints..., gripper]  (D 可变)
+    Output format:
+      rot_type == "quaternion" -> [x, y, z, qx, qy, qz, qw, gripper]  (8D)
+      rot_type == "euler"      -> convert to quat -> [x, y, z, qx, qy, qz, qw, gripper]  (8D)
+      rot_type == "none"       -> [joints..., gripper]  (variable D)
     """
 
     if rot_type == "none":
@@ -115,12 +115,12 @@ def _build_combined_vector(
         raw = _concat_columns(df, all_cols)
 
         if arm.joint_indices or arm.grip_indices:
-            # 使用显式指定的索引
+            # Use explicitly specified indices
             joints = raw[:, arm.joint_indices] if arm.joint_indices else np.empty((len(df), 0))
             grip_idx = arm.grip_indices
             gripper = raw[:, grip_idx] if grip_idx else np.zeros((len(df), 1))
         else:
-            # 自动推断：最后一列为 gripper，其余为 joints
+            # Auto-infer: last column is gripper, the rest are joints
             D = raw.shape[1]
             joints = raw[:, :D - 1]
             gripper = raw[:, D - 1:D]
@@ -160,7 +160,7 @@ def _build_combined_vector(
 
 
 # ═══════════════════════════════════════════════════════════
-#  特征归一化
+#  Feature Normalization
 # ═══════════════════════════════════════════════════════════
 
 def normalize_trajectories(
@@ -168,23 +168,23 @@ def normalize_trajectories(
     rot_type: str,
 ) -> tuple[list[Trajectory], dict]:
     """
-    对轨迹特征做 min-max 归一化到 [0, 1]，使不同量纲的分量可比。
+    Min-max normalize trajectory features to [0, 1], making components with different units comparable.
 
-    归一化策略:
-      EEF 模式 (quaternion/euler) → 向量 [x,y,z, qx,qy,qz,qw, grip]
-        - position (dim 0-2): 归一化 ✓
-        - quaternion (dim 3-6): 不动 (geodesic 自然范围 [0,π])
-        - gripper (dim 7+):  归一化 ✓
+    Normalization strategy:
+      EEF mode (quaternion/euler) -> vector [x,y,z, qx,qy,qz,qw, grip]
+        - position (dim 0-2): normalized
+        - quaternion (dim 3-6): unchanged (geodesic has natural range [0, pi])
+        - gripper (dim 7+): normalized
 
-      Joint 模式 (none) → 向量 [joints..., grip]
-        - 所有维度: 归一化 ✓
+      Joint mode (none) -> vector [joints..., grip]
+        - all dimensions: normalized
 
-    统计量基于当前所有 trajectory 的全局 min/max。
+    Statistics are computed from global min/max across all trajectories.
 
     Returns
     -------
-    normalized : 归一化后的 Trajectory 列表
-    stats : 每个归一化维度的 {min, max, range} 诊断信息
+    normalized : list of normalized Trajectory objects
+    stats : diagnostic info with {min, max, range} for each normalized dimension
     """
     if len(trajectories) < 2:
         return trajectories, {}
@@ -226,24 +226,24 @@ def normalize_trajectories(
 
 
 # ═══════════════════════════════════════════════════════════
-#  RoboMindV2.0 动态配置加载
+#  RoboMindV2.0 Dynamic Config Loading
 # ═══════════════════════════════════════════════════════════
 
 def load_modality_config(robot_type_path: str, side: str) -> dict:
     """
-    从 modality.json 加载指定侧的配置。
+    Load configuration for the specified side from modality.json.
 
     Parameters
     ----------
-    robot_type_path : robot_type 目录路径 (e.g., /path/to/RoboMindV2.0/agilex)
-    side : 'left' 或 'right'
+    robot_type_path : robot_type directory path (e.g., /path/to/RoboMindV2.0/agilex)
+    side : 'left' or 'right'
 
     Returns
     -------
     config_dict : {
         "joint_column": str,
         "joint_indices": list[int],
-        "effector_column": str,  # gripper 或 hand 的列名
+        "effector_column": str,  # column name for gripper or hand
         "effector_indices": list[int],
         "effector_type": "gripper" | "hand"
     }
@@ -257,7 +257,7 @@ def load_modality_config(robot_type_path: str, side: str) -> dict:
 
     action_config = modality.get("action", {})
 
-    # 读取 joint 配置
+    # Read joint config
     joint_key = f"{side}_joint"
     if joint_key not in action_config:
         raise KeyError(f"'{joint_key}' not found in modality.json action config")
@@ -266,17 +266,17 @@ def load_modality_config(robot_type_path: str, side: str) -> dict:
     joint_column = joint_info["original_key"]
     joint_indices = joint_info["indices"]
 
-    # 读取 effector 配置（优先 hand，其次 gripper）
+    # Read effector config (prefer hand, fallback to gripper)
     hand_key = f"{side}_hand"
     gripper_key = f"{side}_gripper"
 
     if hand_key in action_config:
-        # 有灵巧手
+        # Has dexterous hand
         effector_info = action_config[hand_key]
         effector_type = "hand"
         effector_key = hand_key
     elif gripper_key in action_config:
-        # 有夹爪
+        # Has gripper
         effector_info = action_config[gripper_key]
         effector_type = "gripper"
         effector_key = gripper_key
@@ -297,11 +297,11 @@ def load_modality_config(robot_type_path: str, side: str) -> dict:
 
 def load_filter_report(filter_report_path: str) -> dict[str, set[int]]:
     """
-    加载 filter_report.json，提取各个子数据集的问题 episode 列表。
+    Load filter_report.json and extract problematic episode lists for each sub-dataset.
 
     Parameters
     ----------
-    filter_report_path : filter_report.json 文件路径
+    filter_report_path : path to filter_report.json
 
     Returns
     -------
@@ -316,7 +316,7 @@ def load_filter_report(filter_report_path: str) -> dict[str, set[int]]:
 
     problem_episodes = {}
 
-    # RoboMindV2.0_filter_report.json 格式:
+    # RoboMindV2.0_filter_report.json format:
     # {
     #   "summary": {...},
     #   "subdatasets": {
@@ -345,9 +345,9 @@ def load_filter_report(filter_report_path: str) -> dict[str, set[int]]:
 
 def infer_robot_type_from_path(sub_dataset_path: str, dataset_root: str) -> str:
     """
-    从子数据集路径推断 robot_type（第一级子目录）。
+    Infer robot_type (first-level subdirectory) from a sub-dataset path.
 
-    例如: /path/to/RoboMindV2.0/agilex/task1 → 'agilex'
+    Example: /path/to/RoboMindV2.0/agilex/task1 -> 'agilex'
     """
     rel_path = os.path.relpath(sub_dataset_path, dataset_root)
     parts = rel_path.split(os.sep)
@@ -357,7 +357,7 @@ def infer_robot_type_from_path(sub_dataset_path: str, dataset_root: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════
-#  公共 API
+#  Public API
 # ═══════════════════════════════════════════════════════════
 
 def load_trajectories(
@@ -369,21 +369,21 @@ def load_trajectories(
     robot_type: str | None = None,
 ) -> list[Trajectory]:
     """
-    扫描 dataset_root/data/chunk-*/episode_*.parquet，
-    按 episode 拆分并构建统一格式的轨迹向量。
+    Scan dataset_root/data/chunk-*/episode_*.parquet,
+    split by episode and build unified trajectory vectors.
 
     Parameters
     ----------
-    dataset_root : 单个（子）数据集根目录（包含 data/ 子目录）
-    config : 数据集配置
-    side : 要分析的手臂侧
-    max_episodes : 最多加载几条轨迹（None=全部）
-    exclude_episodes : 要排除的 episode ID 集合
-    robot_type : 机器人型号（用于 RoboMindV2.0 动态配置加载）
+    dataset_root : root directory of a single (sub-)dataset (containing a data/ subdirectory)
+    config : dataset configuration
+    side : arm side to analyze
+    max_episodes : maximum number of trajectories to load (None=all)
+    exclude_episodes : set of episode IDs to exclude
+    robot_type : robot model name (used for RoboMindV2.0 dynamic config loading)
     """
     if side not in config.arms:
         available = list(config.arms.keys())
-        # 如果只有 single，自动映射
+        # If only 'single' is available, auto-map to it
         if "single" in config.arms:
             side = "single"
         else:
@@ -391,19 +391,19 @@ def load_trajectories(
 
     arm = config.arms[side]
 
-    # ── 动态配置加载（RoboMindV2.0）──
+    # ── Dynamic config loading (RoboMindV2.0) ──
     if config.has_modality_json and robot_type:
-        # 推断 robot_type 路径
+        # Infer robot_type path
         robot_type_path = os.path.join(
             config.dataset_path, robot_type
         )
 
         if os.path.exists(os.path.join(robot_type_path, "modality.json")):
-            print(f"  [INFO] 从 modality.json 加载 robot_type={robot_type}, side={side}")
+            print(f"  [INFO] Loading from modality.json: robot_type={robot_type}, side={side}")
             try:
                 modality_cfg = load_modality_config(robot_type_path, side)
 
-                # 动态构建 ArmConfig
+                # Dynamically build ArmConfig
                 arm = ArmConfig(
                     eef_columns=[],
                     gripper_columns=[modality_cfg["effector_column"]],
@@ -416,8 +416,8 @@ def load_trajectories(
                       f"{side}_{modality_cfg['effector_type']}({len(modality_cfg['effector_indices'])}D)")
 
             except Exception as e:
-                print(f"  [WARN] 无法加载 modality.json: {e}，使用默认配置")
-                # fallback 到原始 config 中的 arm
+                print(f"  [WARN] Failed to load modality.json: {e}, using default config")
+                # Fallback to the original arm config
                 arm = config.arms[side]
 
     pattern = os.path.join(dataset_root, "data", "chunk-*", "episode_*.parquet")
@@ -429,7 +429,7 @@ def load_trajectories(
     for fpath in files:
         df = pq.read_table(fpath).to_pandas()
 
-        # 检查必需列
+        # Check required columns
         needed = arm.eef_columns + arm.gripper_columns + arm.joint_columns
         needed = [c for c in needed if c]
         missing = [c for c in needed if c not in df.columns]
@@ -466,12 +466,12 @@ def load_trajectories(
 
 def discover_tasks(dataset_root: str) -> tuple[dict[str, list[int]], int]:
     """
-    从 meta/episodes.jsonl 解析 task→episode_indices 映射。
+    Parse task -> episode_indices mapping from meta/episodes.jsonl.
 
     Returns
     -------
     task_map : {task_name: [episode_index, ...]}
-    chunk_size : 从 meta/info.json 读取的 chunk 大小
+    chunk_size : chunk size read from meta/info.json
     """
     episodes_path = os.path.join(dataset_root, "meta", "episodes.jsonl")
     info_path = os.path.join(dataset_root, "meta", "info.json")
@@ -480,7 +480,7 @@ def discover_tasks(dataset_root: str) -> tuple[dict[str, list[int]], int]:
         info = json.load(f)
     chunk_size = info.get("chunks_size", 1000)
 
-    # 尝试从 tasks.jsonl 构建 task_index → task_name 映射
+    # Try to build task_index -> task_name mapping from tasks.jsonl
     tasks_path = os.path.join(dataset_root, "meta", "tasks.jsonl")
     idx_to_task: dict[int, str] = {}
     if os.path.isfile(tasks_path):
@@ -494,10 +494,10 @@ def discover_tasks(dataset_root: str) -> tuple[dict[str, list[int]], int]:
         for line in f:
             ep = json.loads(line)
             ep_idx = ep["episode_index"]
-            # 优先使用 "tasks" 字段（字符串列表，如 BC_Z / RT-1）
+            # Prefer the "tasks" field (string list, e.g. BC_Z / RT-1)
             task_names = ep.get("tasks", [])
             if not task_names and "task_index" in ep:
-                # 通过 task_index 查找 task 名称（如 RH20T）
+                # Look up task name via task_index (e.g. RH20T)
                 ti = ep["task_index"]
                 if ti in idx_to_task:
                     task_names = [idx_to_task[ti]]
@@ -518,15 +518,15 @@ def load_trajectories_by_indices(
     chunk_size: int = 1000,
 ) -> list[Trajectory]:
     """
-    按指定的 episode_index 列表加载轨迹，根据 index 定位 parquet 文件。
+    Load trajectories by a given list of episode indices, locating parquet files by index.
 
     Parameters
     ----------
-    dataset_root : 数据集根目录（包含 data/ 子目录）
-    config : 数据集配置
-    side : 要分析的手臂侧
-    episode_indices : 要加载的 episode 编号列表
-    chunk_size : 每个 chunk 包含的 episode 数（从 info.json 读取）
+    dataset_root : dataset root directory (containing a data/ subdirectory)
+    config : dataset configuration
+    side : arm side to analyze
+    episode_indices : list of episode indices to load
+    chunk_size : number of episodes per chunk (read from info.json)
     """
     if side not in config.arms:
         if "single" in config.arms:
@@ -582,15 +582,15 @@ def load_trajectories_by_indices(
 
 def discover_sub_datasets(config: DatasetConfig) -> list[dict[str, str]]:
     """
-    发现数据集下的所有子数据集路径。
-    根据 sub_dataset_depth 扫描目录。
+    Discover all sub-dataset paths under the dataset.
+    Scans directories based on sub_dataset_depth.
 
     Returns
     -------
     sub_datasets : list of dict with keys:
-        - 'path': 子数据集完整路径
-        - 'robot_type': 机器人型号（仅对 depth>=2 有效，如 RoboMindV2.0）
-        - 'name': 子数据集相对名称
+        - 'path': full path to the sub-dataset
+        - 'robot_type': robot model (only meaningful for depth>=2, e.g. RoboMindV2.0)
+        - 'name': relative name of the sub-dataset
     """
     if not config.has_sub_datasets:
         return [{"path": config.dataset_path, "robot_type": "", "name": ""}]
@@ -623,7 +623,7 @@ def discover_sub_datasets(config: DatasetConfig) -> list[dict[str, str]]:
                 if os.path.isdir(data_dir):
                     subs.append({
                         "path": sub_path,
-                        "robot_type": level1,  # level1 即为 robot_type
+                        "robot_type": level1,  # level1 is the robot_type
                         "name": f"{level1}/{level2}",
                     })
         return subs
@@ -644,7 +644,7 @@ def discover_sub_datasets(config: DatasetConfig) -> list[dict[str, str]]:
                     if os.path.isdir(data_dir):
                         subs.append({
                             "path": sub_path,
-                            "robot_type": level2,  # level2 可能是 robot_type
+                            "robot_type": level2,  # level2 may be the robot_type
                             "name": f"{level1}/{level2}/{level3}",
                         })
         return subs

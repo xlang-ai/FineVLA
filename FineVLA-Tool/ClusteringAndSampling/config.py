@@ -1,11 +1,11 @@
 """
-VLA 轨迹聚类系统 —— 数据集配置。
+VLA Trajectory Clustering System -- Dataset Configuration.
 
-每个数据集族定义一个 DatasetConfig，描述：
-  - 目录结构（是否有子数据集、层级深度）
-  - 轨迹字段映射（parquet 列名、拼接方式）
-  - 姿态表示类型（quaternion / euler / none）
-  - DTW 权重与聚类默认参数
+Each dataset family defines a DatasetConfig describing:
+  - Directory structure (whether it has sub-datasets, hierarchy depth)
+  - Trajectory field mapping (parquet column names, concatenation method)
+  - Pose representation type (quaternion / euler / none)
+  - DTW weights and default clustering parameters
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Optional
 
 @dataclass
 class ArmConfig:
-    """单臂的字段映射配置。"""
+    """Single arm field mapping configuration."""
     eef_columns: list[str] = field(default_factory=list)
     gripper_columns: list[str] = field(default_factory=list)
     joint_columns: list[str] = field(default_factory=list)
@@ -30,55 +30,55 @@ class ArmConfig:
 
 @dataclass
 class DatasetConfig:
-    """一个数据集族的完整配置。"""
+    """Complete configuration for a dataset family."""
     dataset_name: str
     dataset_path: str
 
-    # ── 目录结构 ──
+    # ── Directory Structure ──
     has_sub_datasets: bool = True
     sub_dataset_depth: int = 1
 
-    # ── 姿态表示 ──
-    rot_type: str = "quaternion"  # "quaternion" | "euler" | "rotation_vector" | “none” 表示纯 joint 空间，无笛卡尔空间 EEF
+    # ── Pose Representation ──
+    rot_type: str = “quaternion”  # “quaternion” | “euler” | “rotation_vector” | “none” means pure joint space, no Cartesian EEF
 
-    # ── 单臂 / 双臂 ──
+    # ── Single-arm / Dual-arm ──
     available_sides: list[str] = field(default_factory=lambda: ["right"])
     arms: dict[str, ArmConfig] = field(default_factory=dict)
 
-    # ── DTW 权重 ──
+    # ── DTW Weights ──
     w_pos: float = 1.0
     w_rot: float = 1.0
     w_grip: float = 100.0
 
-    # ── 特征归一化 & 两阶段 DTW ──
-    scale_features: bool = True   # 对 position/gripper 做 min-max 归一化到 [0,1]
-    two_stage: bool = True        # 两阶段 DTW: EEF 对齐路径 + gripper 沿路径统计
+    # ── Feature Normalization & Two-stage DTW ──
+    scale_features: bool = True   # min-max normalize position/gripper to [0,1]
+    two_stage: bool = True        # two-stage DTW: EEF alignment path + gripper statistics along the path
 
-    # ── 聚类默认参数 ──
-    n_clusters: int = 0  # 0 = 自动选择最佳 k
-    normalize: bool = True  # DTW 距离按路径长度归一化
+    # ── Clustering Default Parameters ──
+    n_clusters: int = 0  # 0 = automatically select best k
+    normalize: bool = True  # normalize DTW distance by path length
     n_jobs: int = 8
-    min_rel_gap: float = 0.3  # 递归聚类子层级 auto-k 的最小 rel_gap 阈值
+    min_rel_gap: float = 0.3  # minimum rel_gap threshold for recursive clustering sub-level auto-k
 
-    # ── 运行默认参数 ──
-    side: str = ""  # 默认分析哪侧: "right"/"left"/"both"/""(空=用 available_sides[0])
-    max_depth: int = 2  # 递归聚类最大深度
-    min_cluster_size: int = 5  # 递归聚类停止的最小簇大小
+    # ── Runtime Default Parameters ──
+    side: str = ""  # default side to analyze: "right"/"left"/"both"/""(empty=use available_sides[0])
+    max_depth: int = 2  # maximum depth for recursive clustering
+    min_cluster_size: int = 5  # minimum cluster size to stop recursive clustering
 
-    # ── 其他 ──
+    # ── Other ──
     has_modality_json: bool = False
-    filter_report_path: str = ""  # 数据质量过滤报告路径
+    filter_report_path: str = ""  # data quality filter report path
     skip: bool = False
     notes: str = ""
 
 
 # ═══════════════════════════════════════════════════════════
-#  数据集根目录
+#  Dataset Root Directory
 # ═══════════════════════════════════════════════════════════
 DATA_ROOT = os.environ.get("VLA_DATA_ROOT", "/path/to/your/Lerobot_v21")
 
 # ═══════════════════════════════════════════════════════════
-#  各数据集配置
+#  Dataset Configurations
 # ═══════════════════════════════════════════════════════════
 
 GALAXEA = DatasetConfig(
@@ -141,7 +141,7 @@ RDT = DatasetConfig(
     side="both",
     max_depth=2,
     min_cluster_size=3,
-    notes="ALOHA 双臂，纯关节空间，无独立 EEF 列",
+    notes="ALOHA dual-arm, pure joint space, no separate EEF columns",
 )
 
 ROBOCOIN = DatasetConfig(
@@ -170,7 +170,7 @@ ROBOCOIN = DatasetConfig(
     },
     w_pos=1.0, w_rot=1.0, w_grip=100.0,
     n_clusters=0, n_jobs=96,
-    notes="eef orientation 为 3D，假设是欧拉角；gripper 使用 eef_direction",
+    notes="eef orientation is 3D, assumed to be Euler angles; gripper uses eef_direction",
 )
 
 ROBOCOIN_ADD = DatasetConfig(
@@ -247,7 +247,7 @@ BRIDGE = DatasetConfig(
     },
     w_pos=1.0, w_rot=1.0, w_grip=100.0,
     n_clusters=0, n_jobs=8,
-    notes="action shape=[7] [x,y,z,roll,pitch,yaw,gripper]；单臂",
+    notes="action shape=[7] [x,y,z,roll,pitch,yaw,gripper]; single-arm",
 )
 
 RT1 = DatasetConfig(
@@ -271,7 +271,7 @@ RT1 = DatasetConfig(
     min_rel_gap=0.0,
     max_depth=5,
     min_cluster_size=3,
-    notes="state=[x,y,z,rx,ry,rz,rw,gripper] 四元数; flat ward k=20 推荐",
+    notes="state=[x,y,z,rx,ry,rz,rw,gripper] quaternion; flat ward k=20 recommended",
 )
 
 BC_Z = DatasetConfig(
@@ -295,7 +295,7 @@ BC_Z = DatasetConfig(
     min_rel_gap=0.0,
     max_depth=5,
     min_cluster_size=3,
-    notes="state=[8] [x,y,z,roll,pitch,yaw,pad,gripper]; flat ward k=20 推荐",
+    notes="state=[8] [x,y,z,roll,pitch,yaw,pad,gripper]; flat ward k=20 recommended",
 )
 
 DROID = DatasetConfig(
@@ -316,7 +316,7 @@ DROID = DatasetConfig(
     },
     w_pos=1.0, w_rot=1.0, w_grip=100.0,
     n_clusters=0, n_jobs=8,
-    notes="EEF 分两列存储: cartesian_position(6) + gripper_position(1)",
+    notes="EEF stored in two columns: cartesian_position(6) + gripper_position(1)",
 )
 
 DROID_ROBOINTER = DatasetConfig(
@@ -391,7 +391,7 @@ RH20T = DatasetConfig(
     },
     w_pos=1.0, w_rot=1.0, w_grip=100.0,
     n_clusters=0, n_jobs=8,
-    notes="action=[joint_0..6, gripper]，纯关节空间",
+    notes="action=[joint_0..6, gripper], pure joint space",
 )
 
 RH20T_ROBOINTER = DatasetConfig(
@@ -460,18 +460,18 @@ ROBOMIND_V2 = DatasetConfig(
     has_sub_datasets=True,
     sub_dataset_depth=2,
     rot_type="none",
-    has_modality_json=True,  # 每个 robot_type 有独立的 modality.json
+    has_modality_json=True,  # each robot_type has its own modality.json
     filter_report_path=f"{DATA_ROOT}/RoboMindV2.0/RoboMindV2.0_filter_report.json",
     available_sides=["right", "left"],
     arms={
-        # 注意：实际配置从 modality.json 动态加载
-        # 这里提供默认模板，仅用于不支持动态加载的场景
+        # Note: actual configuration is dynamically loaded from modality.json
+        # The defaults here serve as a template, only used when dynamic loading is not supported
         "right": ArmConfig(
             eef_columns=[],
-            gripper_columns=[],  # 动态读取
-            joint_columns=[],     # 动态读取
-            joint_indices=[],     # 动态读取
-            grip_indices=[],      # 动态读取
+            gripper_columns=[],  # dynamically loaded
+            joint_columns=[],     # dynamically loaded
+            joint_indices=[],     # dynamically loaded
+            grip_indices=[],      # dynamically loaded
         ),
         "left": ArmConfig(
             eef_columns=[],
@@ -483,7 +483,7 @@ ROBOMIND_V2 = DatasetConfig(
     },
     w_pos=1.0, w_rot=1.0, w_grip=100.0,
     n_clusters=0, n_jobs=8,
-    notes="二级子目录结构 robot_type/task/；配置从 modality.json 动态加载，支持异构机器人（6/7维关节，gripper/hand）",
+    notes="Two-level sub-directory structure robot_type/task/; config dynamically loaded from modality.json, supports heterogeneous robots (6/7-dim joints, gripper/hand)",
 )
 ROBOMIND_V1 = DatasetConfig(
     dataset_name="RoboMindV1.0",
@@ -498,25 +498,25 @@ ROBOMIND_V1 = DatasetConfig(
             eef_columns=[],
             gripper_columns=[],
             joint_columns=["actions.joint_position"],
-            # joint_indices / grip_indices 留空 → 自动推断：最后一列为 gripper，其余为 joints
+            # joint_indices / grip_indices left empty -> auto-inferred: last column is gripper, rest are joints
         ),
         "right": ArmConfig(
             eef_columns=[],
             gripper_columns=[],
             joint_columns=["actions.joint_position_right"],
-            # 自动推断索引
+            # auto-infer indices
         ),
         "left": ArmConfig(
             eef_columns=[],
             gripper_columns=[],
             joint_columns=["actions.joint_position_left"],
-            # 自动推断索引
+            # auto-infer indices
         ),
     },
     w_pos=1.0, w_rot=1.0, w_grip=100.0,
     n_clusters=0, n_jobs=8,
     side="single",
-    notes="三级子目录 benchmark/robot_type/task；异构机器人：单臂用 single，双臂 agilex 用 right+left",
+    notes="Three-level sub-directory benchmark/robot_type/task; heterogeneous robots: single-arm uses single, dual-arm agilex uses right+left",
 )
 
 XVLA = DatasetConfig(
@@ -536,12 +536,12 @@ XVLA = DatasetConfig(
         ),
     },
     skip=True,
-    notes="state shape=[96] 复杂结构，action=[14] joints，暂时跳过",
+    notes="state shape=[96] complex structure, action=[14] joints, skipped for now",
 )
 
 
 # ═══════════════════════════════════════════════════════════
-#  注册表：name → config
+#  Registry: name -> config
 # ═══════════════════════════════════════════════════════════
 
 DATASET_REGISTRY: dict[str, DatasetConfig] = {

@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Debug: 输出当前使用的 Python 环境
+# Debug: Print the current Python environment
 echo "Using Python: $(which python)"
 
 
-# 设置必要的环境变量
+# Set required environment variables
 export star_vla_python=/root/miniconda3/envs/starVLA/bin/python
 export sim_python=/root/miniconda3/envs/behavior/bin/python
 export TASKS_JSONL_PATH=./examples/Behavior/tasks.jsonl
@@ -16,19 +16,19 @@ export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
 # Prefer NVIDIA GLX vendor when any GL deps are touched
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 
-# 配置模型路径和端口
+# Configure model path and port
 # set the eval parameters
 MODEL_PATH=/mnt/workspace/jinhuiye/Projects/Pai-PhysxEvalTools/InferModelEngines/starVLA/results/Checkpoints/StarVLA_0110_BEHAVIOR_rgp_dual_normbase_QwenOFT_task0_fullimage/checkpoints/steps_30000_pytorch_model.pt
 
 PORT=10197
 WRAPPERS="DefaultWrapper"
-USE_STATE=False  # 是否使用状态作为观察的一部分
+USE_STATE=False  # Whether to include state as part of the observation
 
-# 配置任务名称
-TASK_NAME="turning_on_radio"  # 选择一个简单的任务
+# Configure task name
+TASK_NAME="turning_on_radio"  # Choose a simple task
 
 
-# 运行单个任务
+# Run a single task
 export DEBUG=true
 echo "▶️ Running task '${TASK_NAME}'..."
 CUDA_VISIBLE_DEVICES=0 ${sim_python} examples/Behavior/start_behavior_env.py \

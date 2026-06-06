@@ -86,7 +86,7 @@ ROBOT_TYPE_TO_EMBODIMENT_TAG = {
     "custom_robot_config": EmbodimentTag.NEW_EMBODIMENT,
     "fourier_gr1_arms_waist": EmbodimentTag.GR1,
     "robocasa365_panda_omron": EmbodimentTag.NEW_EMBODIMENT,
-    "R1Pro": EmbodimentTag.R1Pro, # BUG 等待check 这个文件的不要性质
+    "R1Pro": EmbodimentTag.R1Pro, # BUG pending check on the necessity of this file
     "robotwin": EmbodimentTag.RoboTwin,
     "lerobot_v21_robotwin": EmbodimentTag.RoboTwin,
     "lerobot_v21_aloha": EmbodimentTag.RDT,

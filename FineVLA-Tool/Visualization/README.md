@@ -1,17 +1,17 @@
 # LeRobot v2.1 Dataset Visualizer
 
-本地 Web 工具，用于可视化 LeRobot v2.1 格式的机器人数据集。
+A local web tool for visualizing robotics datasets in LeRobot v2.1 format.
 
-## 功能
+## Features
 
-- 输入 parquet 文件路径，自动解析数据集信息
-- 多视角视频同步播放
-- 逐帧 Task 标注显示
-- State / Action 时序曲线图（Y 轴范围来自 episodes_stats）
-- 帧滑块与视频/曲线联动
-- 支持多种数据集（Galaxea、RoboCOIN、RoboMind 等）
+- Enter a parquet file path to automatically parse dataset information
+- Multi-view video synchronized playback
+- Per-frame task annotation display
+- State / Action time-series charts (Y-axis range from episodes_stats)
+- Frame slider linked with video and charts
+- Supports multiple datasets (Galaxea, RoboCOIN, RoboMind, etc.)
 
-## 启动
+## Getting Started
 
 ```bash
 cd backend
@@ -19,19 +19,19 @@ pip install -r requirements.txt
 python main.py
 ```
 
-然后浏览器打开 http://localhost:8765
+Then open http://localhost:8765 in your browser.
 
-## 使用
+## Usage
 
-在输入框中粘贴 parquet 文件的绝对路径，例如：
+Paste the absolute path of a parquet file into the input box, for example:
 
 ```
 $VLA_DATA_ROOT/Galaxea-Open-World-Dataset/Adjust_The_Air_Conditioner_Temperature_20250711_006/data/chunk-000/episode_000000.parquet
 ```
 
-点击 Load 即可。
+Click Load to proceed.
 
-## 添加新数据集
+## Adding New Datasets
 
-编辑 `backend/dataset_config.py`，在 `DATASET_CONFIGS` 中新增条目，指定 `match_keyword` 和对应的 state/action 字段。
-如果不配置，系统会自动从 `info.json` 中发现字段（fallback）。
+Edit `backend/dataset_config.py` and add a new entry in `DATASET_CONFIGS`, specifying `match_keyword` and the corresponding state/action fields.
+If not configured, the system will automatically discover fields from `info.json` (fallback).

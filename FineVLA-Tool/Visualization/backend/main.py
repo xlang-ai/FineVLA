@@ -257,7 +257,7 @@ TARGET_EEF_ACTION_TYPE = "abs_quat"
 
 
 def _resolve_dataset_key(dataset_root: str) -> str:
-    """从 dataset_root 推断在 filter_config.STATE_ACTION_COMPARE_SLOTS 中的 key。"""
+    """Infer the key in filter_config.STATE_ACTION_COMPARE_SLOTS from dataset_root."""
     norm = os.path.normpath(dataset_root)
     data_root = os.path.normpath(filter_config.DATA_ROOT)
     if norm.startswith(data_root):
@@ -280,7 +280,7 @@ class CalDtwRequest(BaseModel):
 
 @app.post("/api/cal_dtw")
 async def api_cal_dtw(req: CalDtwRequest):
-    """对当前 episode 做 unified 转换后计算 state 与 action 的 DTW 距离。"""
+    """Compute DTW distance between unified state and action for the current episode."""
     dataset_root = req.dataset_root
     parquet_path = os.path.join(
         dataset_root, "data",
@@ -295,13 +295,13 @@ async def api_cal_dtw(req: CalDtwRequest):
     if slot_cfg is None:
         raise HTTPException(
             status_code=400,
-            detail=f"数据集 '{dataset_key}' 未配置 state-action 对比 slot（STATE_ACTION_COMPARE_SLOTS 中为 None 或不存在）。"
+            detail=f"Dataset '{dataset_key}' has no state-action comparison slot configured (not found or set to None in STATE_ACTION_COMPARE_SLOTS)."
         )
     state_slot = slot_cfg["state_slot"]
     action_slot = slot_cfg["action_slot"]
     for s in (state_slot, action_slot):
         if s in GRIPPER_SLOTS:
-            raise HTTPException(status_code=400, detail=f"slot '{s}' 为 gripper 类型，不支持 DTW 对比。")
+            raise HTTPException(status_code=400, detail=f"Slot '{s}' is a gripper type and does not support DTW comparison.")
 
     modality_path = os.path.join(dataset_root, "meta", "modality.json")
     if not os.path.exists(modality_path):
@@ -327,9 +327,9 @@ async def api_cal_dtw(req: CalDtwRequest):
     mask_action = result["mask.action"]       # (T, 80)
 
     if state_slot not in UNIFIED_STATE_ACTION_INDICES:
-        raise HTTPException(status_code=400, detail=f"state_slot '{state_slot}' 不在 UNIFIED_STATE_ACTION_INDICES 中。")
+        raise HTTPException(status_code=400, detail=f"state_slot '{state_slot}' not found in UNIFIED_STATE_ACTION_INDICES.")
     if action_slot not in UNIFIED_STATE_ACTION_INDICES:
-        raise HTTPException(status_code=400, detail=f"action_slot '{action_slot}' 不在 UNIFIED_STATE_ACTION_INDICES 中。")
+        raise HTTPException(status_code=400, detail=f"action_slot '{action_slot}' not found in UNIFIED_STATE_ACTION_INDICES.")
 
     s_lo, s_hi = UNIFIED_STATE_ACTION_INDICES[state_slot]
     a_lo, a_hi = UNIFIED_STATE_ACTION_INDICES[action_slot]
@@ -341,13 +341,13 @@ async def api_cal_dtw(req: CalDtwRequest):
 
     valid_dim_mask = (mask_s_slice & mask_a_slice).all(axis=0)
     if not valid_dim_mask.any():
-        raise HTTPException(status_code=400, detail="state 与 action 没有共同有效维度（mask 不满足）。")
+        raise HTTPException(status_code=400, detail="State and action have no shared valid dimensions (mask not satisfied).")
 
     state_valid = state_slice[:, valid_dim_mask].astype(np.float64)
     action_valid = action_slice[:, valid_dim_mask].astype(np.float64)
 
     if state_valid.shape[0] < 2:
-        raise HTTPException(status_code=400, detail="有效帧数不足（< 2），无法计算 DTW。")
+        raise HTTPException(status_code=400, detail="Too few valid frames (< 2), cannot compute DTW.")
 
     sim = compute_episode_similarity(state_valid, action_valid)
 

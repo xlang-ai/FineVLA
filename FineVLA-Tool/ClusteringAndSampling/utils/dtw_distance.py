@@ -1,13 +1,13 @@
 """
-基于 DTW 的轨迹相似度计算。
+DTW-based trajectory similarity computation.
 
-支持两种帧代价模式：
-  - EEF 模式 (rot_type = "quaternion" | "euler"):
-      向量 [x,y,z, qx,qy,qz,qw, gripper] (8D)
-      代价 = w_pos * L2(pos) + w_rot * geodesic(quat) + w_grip * |grip|
-  - Joint 模式 (rot_type = "none"):
-      向量 [joints..., gripper] (D 可变)
-      代价 = w_pos * L2(joints) + w_grip * |grip|  (w_rot 不使用)
+Supports two frame cost modes:
+  - EEF mode (rot_type = "quaternion" | "euler"):
+      vector [x,y,z, qx,qy,qz,qw, gripper] (8D)
+      cost = w_pos * L2(pos) + w_rot * geodesic(quat) + w_grip * |grip|
+  - Joint mode (rot_type = "none"):
+      vector [joints..., gripper] (variable D)
+      cost = w_pos * L2(joints) + w_grip * |grip|  (w_rot unused)
 """
 
 from __future__ import annotations
@@ -16,11 +16,11 @@ import numpy as np
 from numba import njit
 
 
-# ──────────────────────── 单帧代价函数 ────────────────────────
+# ──────────────────────── Per-frame Cost Functions ────────────────────────
 
 @njit(cache=True)
 def _quat_geodesic(q1: np.ndarray, q2: np.ndarray) -> float:
-    """四元数测地线角距离（弧度）。q 与 -q 表示同一姿态。"""
+    """Quaternion geodesic angular distance (radians). q and -q represent the same orientation."""
     dot = q1[0]*q2[0] + q1[1]*q2[1] + q1[2]*q2[2] + q1[3]*q2[3]
     dot = abs(dot)
     if dot > 1.0:
@@ -37,8 +37,8 @@ def frame_cost_eef(
     w_grip: float = 0.03,
 ) -> float:
     """
-    EEF 模式帧代价。
-    a, b: 长度 8 的向量 [x,y,z, qx,qy,qz,qw, gripper]
+    EEF mode frame cost.
+    a, b: length-8 vectors [x,y,z, qx,qy,qz,qw, gripper]
     """
     dx = a[0] - b[0]
     dy = a[1] - b[1]
@@ -60,9 +60,9 @@ def frame_cost_joint(
     w_grip: float = 0.03,
 ) -> float:
     """
-    Joint 模式帧代价。
-    a, b: [joints..., gripper]，最后一个元素是 gripper。
-    w_pos 作用于 joints 的 L2 距离。
+    Joint mode frame cost.
+    a, b: [joints..., gripper], last element is gripper.
+    w_pos applies to the L2 distance of joints.
     """
     D = a.shape[0]
     sq_sum = 0.0
@@ -76,7 +76,7 @@ def frame_cost_joint(
     return w_pos * d_joint + w_grip * d_grip
 
 
-# ──────────────────────── DTW 核心 (EEF) ────────────────────────
+# ──────────────────────── DTW Core (EEF) ────────────────────────
 
 @njit(cache=True)
 def _dtw_cost_matrix_eef(
@@ -120,7 +120,7 @@ def _dtw_with_window_eef(
     return dp[N, M]
 
 
-# ──────────────────────── DTW 核心 (Joint) ────────────────────────
+# ──────────────────────── DTW Core (Joint) ────────────────────────
 
 @njit(cache=True)
 def _dtw_cost_matrix_joint(
@@ -162,11 +162,11 @@ def _dtw_with_window_joint(
     return dp[N, M]
 
 
-# ──────────────────────── 路径回溯 ────────────────────────
+# ──────────────────────── Path Backtracing ────────────────────────
 
 @njit(cache=True)
 def _backtrace_length(dp: np.ndarray) -> int:
-    """回溯 DTW 路径以获取路径长度（用于归一化）。"""
+    """Backtrace the DTW path to get path length (used for normalization)."""
     i = dp.shape[0] - 1
     j = dp.shape[1] - 1
     length = 0
@@ -193,10 +193,10 @@ def _backtrace_length(dp: np.ndarray) -> int:
     return length
 
 
-# ──────────────────────── 路径回溯（完整路径） ────────────────────────
+# ──────────────────────── Path Backtracing (Full Path) ────────────────────────
 
 def _backtrace_path(dp: np.ndarray) -> list[tuple[int, int]]:
-    """回溯 DTW 得到完整对齐路径 [(i,j), ...]，0-indexed。"""
+    """Backtrace DTW to get the full alignment path [(i,j), ...], 0-indexed."""
     i = dp.shape[0] - 1
     j = dp.shape[1] - 1
     path = []
@@ -223,7 +223,7 @@ def _backtrace_path(dp: np.ndarray) -> list[tuple[int, int]]:
     return path
 
 
-# ──────────────────────── 两阶段 DTW ────────────────────────
+# ──────────────────────── Two-stage DTW ────────────────────────
 
 def two_stage_dtw_distance(
     seq_a: np.ndarray,
@@ -236,19 +236,19 @@ def two_stage_dtw_distance(
     grip_threshold: float = 0.01,
 ) -> dict:
     """
-    两阶段 DTW 距离：
+    Two-stage DTW distance:
 
-    阶段 1：仅用 pos+rot 做 DTW 对齐 (w_grip=0)，得到对齐路径
-            D_eef = eef_raw_cost / path_length
+    Stage 1: DTW alignment using only pos+rot (w_grip=0), yielding an alignment path
+             D_eef = eef_raw_cost / path_length
 
-    阶段 2：沿阶段 1 的对齐路径，累计 gripper 差异
-            D_grip = grip_total_cost / path_length
+    Stage 2: Along the Stage 1 alignment path, accumulate gripper differences
+             D_grip = grip_total_cost / path_length
 
-    最终距离：D = D_eef + w_grip × D_grip
+    Final distance: D = D_eef + w_grip * D_grip
 
     Returns
     -------
-    dict 包含所有中间量，方便分析
+    dict containing all intermediate values for analysis
     """
     seq_a = np.ascontiguousarray(seq_a, dtype=np.float64)
     seq_b = np.ascontiguousarray(seq_b, dtype=np.float64)
@@ -257,7 +257,7 @@ def two_stage_dtw_distance(
     is_joint = (rot_type == "none")
     grip_dim = seq_a.shape[1] - 1 if is_joint else 7
 
-    # ── 阶段 1: EEF-only DTW (gripper weight = 0) ──
+    # ── Stage 1: EEF-only DTW (gripper weight = 0) ──
     if window is not None:
         if is_joint:
             eef_raw = _dtw_with_window_joint(seq_a, seq_b, w_pos, 0.0, window)
@@ -276,7 +276,7 @@ def two_stage_dtw_distance(
         path_len = len(path)
         d_eef = eef_raw / path_len
 
-    # ── 阶段 2: 沿对齐路径统计 gripper 差异 ──
+    # ── Stage 2: Compute gripper differences along alignment path ──
     grip_total = 0.0
     grip_diff_frames = 0
 
@@ -290,7 +290,7 @@ def two_stage_dtw_distance(
     d_grip = grip_total / path_len if path_len > 0 else 0.0
     grip_mismatch_ratio = grip_diff_frames / path_len if path_len > 0 else 0.0
 
-    # ── 最终距离 ──
+    # ── Final distance ──
     d_total = d_eef + w_grip * d_grip
 
     return {
@@ -308,7 +308,7 @@ def two_stage_dtw_distance(
     }
 
 
-# ──────────────────────── 统一接口 ────────────────────────
+# ──────────────────────── Unified Interface ────────────────────────
 
 def dtw_distance(
     seq_a: np.ndarray,
@@ -322,11 +322,11 @@ def dtw_distance(
     two_stage: bool = False,
 ) -> float:
     """
-    计算两条轨迹的 DTW 距离。
+    Compute DTW distance between two trajectories.
 
     Parameters
     ----------
-    two_stage : True 时使用两阶段 DTW（EEF 对齐 + gripper 沿路径统计）
+    two_stage : when True, use two-stage DTW (EEF alignment + gripper statistics along path)
     """
     if two_stage:
         result = two_stage_dtw_distance(
@@ -363,10 +363,10 @@ def dtw_distance(
     return float(raw)
 
 
-# ──────────────────────── 批量距离矩阵 ────────────────────────
+# ──────────────────────── Batch Distance Matrix ────────────────────────
 
 def _dtw_worker(args):
-    """顶层函数，供 multiprocessing 序列化调用。"""
+    """Top-level function for multiprocessing serialization."""
     i, j, sa, sb, wp, wr, wg, norm, win, rtype, ts = args
     return i, j, dtw_distance(sa, sb, wp, wr, wg, norm, win, rtype, ts)
 
@@ -383,11 +383,11 @@ def compute_distance_matrix(
     two_stage: bool = False,
 ) -> np.ndarray:
     """
-    计算 N 条轨迹的两两 DTW 距离矩阵。
+    Compute pairwise DTW distance matrix for N trajectories.
 
     Parameters
     ----------
-    two_stage : True 时使用两阶段 DTW
+    two_stage : when True, use two-stage DTW
     """
     N = len(trajectories)
     dist_matrix = np.zeros((N, N), dtype=np.float64)
