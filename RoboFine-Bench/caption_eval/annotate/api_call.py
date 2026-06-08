@@ -43,7 +43,7 @@ def create_api_client(api_key: str = None, base_url: str = None) -> OpenAI:
 
 def _is_qwen_model(model: str) -> bool:
     m = model.lower()
-    return "qwen" in m or "qvq" in m
+    return "qwen" in m or "qvq" in m or "robofine" in m
 
 
 def _is_gemini_native_model(model: str) -> bool:
@@ -424,7 +424,7 @@ def _call_gpt_responses(client, image_parts, system_prompt, user_prompt, model):
 
 
 def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, model,
-                            video_urls=None, fps=None):
+                            video_urls=None, fps=None, _ctx_retry=False):
     """OpenAI-compatible path for Qwen, non-native Gemini, and other models."""
 
     has_views = any(
@@ -500,7 +500,20 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
 
     extra = None
     m = model.lower()
-    if "qwen" in m or "qvq" in m:
+    _base = str(client.base_url)
+    if "robofine" in m and ("localhost" in _base or "127.0.0.1" in _base):
+        extra = {"chat_template_kwargs": {"enable_thinking": False}}
+        mm_kwargs = {
+            "min_pixels": 128 * 32 * 32,
+            "max_pixels": 1024 * 32 * 32,
+            "total_pixels": 224000 * 32 * 32,
+        }
+        if video_urls:
+            mm_kwargs["fps"] = fps or 4
+            mm_kwargs["do_sample_frames"] = True
+            mm_kwargs["max_frames"] = 512
+        extra["mm_processor_kwargs"] = mm_kwargs
+    elif "qwen" in m or "qvq" in m:
         extra = {"qwen": {"thinking_config": {"enable_thinking": True}}}
     elif _is_gpt_thinking_model(model) and not _is_gpt_responses_api_model(model):
         extra = {"reasoning_effort": "high", "max_completion_tokens": 32768, "stream": False}
@@ -508,6 +521,10 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
     for attempt in range(MAX_RETRIES):
         try:
             kwargs = {"model": model, "messages": messages}
+            if "robofine" in (model or "").lower():
+                kwargs["temperature"] = 0.0
+                kwargs["top_p"] = 0.95
+                kwargs["max_tokens"] = 32768
             if extra:
                 kwargs["extra_body"] = extra
             response = client.chat.completions.create(**kwargs)
@@ -532,8 +549,23 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
                 }
             return content or "", token_info
         except Exception as e:
-            wait = min(2 ** attempt, 30) if ("429" in str(e) or "rate" in str(e).lower()) else 2
-            logger.warning(f"OpenAI-compat attempt {attempt+1}: {str(e)[:200]}")
+            err_str = str(e)
+            ctx_match = re.search(r'Input length \((\d+)\).*maximum context length \((\d+)\)', err_str)
+            if ctx_match and not _ctx_retry:
+                input_len = int(ctx_match.group(1))
+                max_len = int(ctx_match.group(2))
+                ratio = max_len / input_len * 0.9
+                frame_count = sum(1 for p in image_parts if p.get("type") == "image_url")
+                new_count = max(10, int(frame_count * ratio))
+                logger.warning(f"Context length exceeded ({input_len} > {max_len}), reducing frames {frame_count} -> {new_count}")
+                if has_views:
+                    image_parts = _subsample_multiview_parts(image_parts, new_count)
+                else:
+                    image_parts = _subsample_parts(image_parts, new_count)
+                return _call_openai_compatible(client, image_parts, system_prompt, user_prompt, model,
+                                               video_urls=video_urls, fps=fps, _ctx_retry=True)
+            wait = min(2 ** attempt, 30) if ("429" in err_str or "rate" in err_str.lower()) else 2
+            logger.warning(f"OpenAI-compat attempt {attempt+1}: {err_str[:200]}")
             time.sleep(wait)
     return "", {}
 

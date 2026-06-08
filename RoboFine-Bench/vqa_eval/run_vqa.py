@@ -466,7 +466,7 @@ def get_multi_view_image_parts(
         if not os.path.exists(vpath):
             continue
         try:
-            frames = _decode_video_to_parts(vpath, target_fps=fps, max_frames=500)
+            frames = _decode_video_to_parts(vpath, target_fps=fps, max_frames=512)
         except Exception as e:
             logger.warning(f"Failed to decode {view_name} for {sid}: {e}")
             continue
@@ -528,7 +528,7 @@ def get_image_parts(
     video_path = os.path.join(VQA_VIDEO_DIR, dataset, sid, f"{view_name}.mp4")
     if os.path.exists(video_path):
         try:
-            parts = _decode_video_to_parts(video_path, target_fps=fps, max_frames=500)
+            parts = _decode_video_to_parts(video_path, target_fps=fps, max_frames=512)
             if parts:
                 return parts, f"{view_name}({len(parts)} frames, local)"
         except Exception as e:
@@ -540,7 +540,7 @@ def get_image_parts(
         for vname_key in [view_name, *list(views_map.keys())[:1]]:
             url = views_map.get(vname_key, "")
             if url and url.startswith("http"):
-                parts, desc = _download_video_to_parts(url, target_fps=fps, max_frames=500)
+                parts, desc = _download_video_to_parts(url, target_fps=fps, max_frames=512)
                 if parts:
                     return parts, f"{vname_key}({desc})"
 

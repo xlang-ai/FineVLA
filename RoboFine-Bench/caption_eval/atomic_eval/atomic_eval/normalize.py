@@ -178,9 +178,7 @@ def load_caption_results(caption_path: str) -> dict[str, list[str]]:
             sid = record.get("sample_id", "")
             if not sid:
                 continue
-            steps = (record.get("caption_result")
-                     or record.get("fineGrainedSteps")
-                     or [])
+            steps = record.get("caption_result") or []
             if isinstance(steps, str):
                 steps = [steps]
             elif not isinstance(steps, list):

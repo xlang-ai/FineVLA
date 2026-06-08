@@ -72,34 +72,53 @@ def _get_client(base_url: str = None):
 
 def _decode_video_to_parts(
     video_path: str, fps: float = 4.0, max_frames: int = 500,
+    resize_width: int = 512,
 ) -> List[Dict]:
-    """Decode local video file to base64 image_url parts."""
+    """Decode local video file to base64 image_url parts.
+
+    Uses frame-index sampling (consistent with Annotate_Pipeline):
+    interval = max(1, round(native_fps / target_fps)).
+    """
     try:
         import av
+        import numpy as np
     except ImportError:
         raise ImportError("PyAV is required for image mode: pip install av")
 
     container = av.open(video_path)
     stream = container.streams.video[0]
-    sample_interval = 1.0 / fps if fps > 0 else 0
-    parts = []
-    next_sample_time = 0.0
+    total_frames = stream.frames or 0
+    native_fps = float(stream.average_rate) if stream.average_rate else 30.0
 
+    if total_frames <= 0:
+        for _ in container.decode(video=0):
+            total_frames += 1
+        container.seek(0)
+
+    interval = max(1, int(round(native_fps / fps))) if fps > 0 else 1
+    indices = list(range(0, total_frames, interval))
+    if len(indices) > max_frames:
+        indices = np.linspace(0, total_frames - 1, max_frames).astype(int).tolist()
+    indices_set = set(indices)
+
+    parts = []
     try:
-        for frame in container.decode(video=0):
-            t = float(frame.pts * stream.time_base) if frame.pts is not None else 0
-            if t >= next_sample_time:
-                img = frame.to_image()
-                buf = BytesIO()
-                img.save(buf, format="JPEG", quality=85)
-                b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-                parts.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-                })
-                next_sample_time = t + sample_interval
-                if len(parts) >= max_frames:
-                    break
+        for frame_idx, frame in enumerate(container.decode(video=0)):
+            if frame_idx not in indices_set:
+                continue
+            img = frame.to_image()
+            if resize_width and img.width > resize_width:
+                new_h = int(round(img.height * resize_width / img.width))
+                img = img.resize((resize_width, new_h))
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=85)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+            })
+            if frame_idx >= max(indices):
+                break
     finally:
         container.close()
 
@@ -172,9 +191,7 @@ def load_completed(output_path: str) -> Set[str]:
 # ---------------------------------------------------------------------------
 
 def _filter_views(view_names: List[str]) -> List[str]:
-    """Filter views: 3 views -> keep only main (index 0); otherwise keep all."""
-    if len(view_names) == 3:
-        return [view_names[0]]
+    """Filter views: keep all views (multi-view mode)."""
     return view_names
 
 
@@ -291,7 +308,7 @@ def build_image_parts_from_video(
         if not os.path.exists(video_path):
             continue
         views_used += 1
-        parts = _decode_video_to_parts(video_path, fps=fps)
+        parts = _decode_video_to_parts(video_path, fps=fps, max_frames=512)
         if not parts:
             continue
 

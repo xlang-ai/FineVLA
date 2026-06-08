@@ -288,7 +288,108 @@ The evaluation scripts support multiple VLM providers out of the box:
 | Video URL (1 fps) | — | **693** | N/A |
 | Video URL (2 fps) | **1,918** | **1,323** | N/A |
 
-## 8. Evaluate Your Own Model
+## 8. Evaluate RoboFine-VLM (Local vLLM)
+
+RoboFine-VLM is a Qwen3.5-397B-A17B SFT model. This section covers local deployment via vLLM and running both VQA and Caption evaluations.
+
+### Deploy vLLM
+
+```bash
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+
+nohup python -m vllm.entrypoints.openai.api_server \
+  --model /path/to/RoboFine-VLM-opensource \
+  --host 0.0.0.0 --port 8000 \
+  --tensor-parallel-size 8 \
+  --max-model-len 262144 \
+  --reasoning-parser qwen3 \
+  --dtype bfloat16 \
+  --enforce-eager \
+  --limit-mm-per-prompt '{"image": 1700}' \
+  --additional-config '{"gdn_prefill_backend": "triton"}' \
+  > vllm_server.log 2>&1 &
+```
+
+> **Kill vLLM:** `pkill -9 -f "VLLM::"` (must use uppercase `VLLM` to match EngineCore and Worker processes).
+
+### Caption Evaluation
+
+RoboFine-VLM uses **image list mode** (client-side PyAV decode + base64 frames) because vLLM's OpenCV backend cannot decode AV1-encoded videos (8/10 datasets use AV1).
+
+**Configuration (aligned with SFT training-time settings):**
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| `input-type` | `image` | Client-side PyAV decode, base64 frames |
+| `fps` | `4.0` | Frames per second |
+| `max_frames` | `512` | Per-view frame cap |
+| `resize_width` | `512` | Frames wider than 512px are proportionally downscaled |
+| `temperature` | `0.0` | Deterministic output |
+| `top_p` | `0.95` | |
+| `max_tokens` | `32768` | |
+| `enable_thinking` | `False` | Consistent with SFT inference |
+| Multi-view | All views kept | 3-view samples send all 3 views (no filtering) |
+
+**Run Easy mode (with task instruction):**
+```bash
+export OPENAI_API_KEY=EMPTY
+
+python caption_eval/annotate/run_annotate.py \
+    --model /path/to/RoboFine-VLM-opensource \
+    --base-url http://localhost:8000/v1 \
+    --input-type image \
+    --fps 4 \
+    --video-dir EvalData/videos \
+    --output-dir CaptionEval/CaptionResult/easy \
+    --num-workers 2
+```
+
+**Run Hard mode (without task instruction):**
+```bash
+python caption_eval/annotate/run_annotate.py \
+    --model /path/to/RoboFine-VLM-opensource \
+    --base-url http://localhost:8000/v1 \
+    --input-type image \
+    --fps 4 \
+    --video-dir EvalData/videos \
+    --output-dir CaptionEval/CaptionResult/hard \
+    --num-workers 2 \
+    --no-instruction
+```
+
+> **Concurrency:** Use `--num-workers 2` for local vLLM. Higher concurrency (4+) may cause request timeouts on 3-view samples (~77K tokens each).
+
+**Score with GPT (Direct Alignment):**
+```bash
+python -m caption_eval.atomic_eval.atomic_eval direct-align \
+    --gt-facts EvalData/GT_AtomicFacts.jsonl \
+    --caption CaptionEval/CaptionResult/easy/xxx_CaptionResult.jsonl \
+    --output-dir CaptionEval/AtomicResult/RoboFine_easy/ \
+    --num-workers 8 \
+    --enable-thinking
+```
+
+### VQA Evaluation
+
+```bash
+export OPENAI_API_KEY=EMPTY
+
+python vqa_eval/run_vqa.py \
+    --model /path/to/RoboFine-VLM-opensource \
+    --base-url http://localhost:8000/v1 \
+    --input-type image \
+    --fps 4 \
+    --thinking false \
+    --num-workers 8
+```
+
+### Notes
+
+- **AV1 video codec:** Most benchmark videos use AV1 encoding. vLLM's OpenCV cannot decode AV1, so `--input-type image` is required (client-side PyAV handles AV1).
+- **Frame resize:** Frames are resized to 512px width (preserving aspect ratio) to match SFT training conditions and stay within the 262K token context limit.
+- **Resume:** Both scripts support automatic resume — already-completed samples are skipped on re-run.
+
+## 9. Evaluate Your Own Model
 
 ### Custom Model
 
