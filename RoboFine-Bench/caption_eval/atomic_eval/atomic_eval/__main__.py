@@ -1,4 +1,4 @@
-"""Allow running as: python -m CaptionEval.AtomicEval.atomic_eval"""
+"""Allow running as: python -m caption_eval.atomic_eval.atomic_eval"""
 from .cli import main
 
 main()

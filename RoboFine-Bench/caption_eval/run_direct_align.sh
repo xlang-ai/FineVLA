@@ -1,31 +1,31 @@
 #!/bin/bash
 # Run Direct Alignment (Method B) for selected models
-# Usage: nohup bash CaptionEval/run_direct_align.sh [easy|hard|all] [num_workers] > run_direct_align.log 2>&1 &
+# Usage: bash caption_eval/run_direct_align.sh [easy|hard|all] [num_workers]
+#   Run from RoboFine-Bench/ directory, or the script auto-detects its location.
 
-set -e
+set +e
 
-PYTHON="/root/miniconda3/envs/any4lerobot/bin/python"
-GT_FACTS="CaptionEval/AtomicResult/GT_AtomicFacts.jsonl"
-OUTPUT_BASE="CaptionEval/AtomicResult/DirectAlign"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "${SCRIPT_DIR}/.."  # RoboFine-Bench/
+
+GT_FACTS="EvalData/GT_AtomicFacts.jsonl"
+OUTPUT_BASE="caption_eval/result/DirectAlign"
 MODE="${1:-easy}"
 NUM_WORKERS="${2:-8}"
 
 MODELS=(
-    "Qwen36-SFT_CaptionResult.jsonl"
-    "Qwen36-SFT_T0.7_CaptionResult.jsonl"
+    "RoboFine-VLM_CaptionResult.jsonl"
+    "RoboFine-VLM_T0.7_CaptionResult.jsonl"
     "openai_gpt-5_4-2026-03-05_CaptionResult.jsonl"
     "vertex_ai_gemini-3_1-pro-preview_CaptionResult.jsonl"
-    "gemini_3_1_pro_CaptionResult.jsonl"
     "qwen3-vl-plus_CaptionResult.jsonl"
     "qwen3_5-plus_CaptionResult.jsonl"
     "doubao_doubao-seed-2-0-pro-260215_CaptionResult.jsonl"
 )
 
-cd /mnt/cpfs_m6_29eu38p1/data/shared/Group-m6/tongzai.hxt/VLM4Robotics_Benchmark
-
 run_mode() {
     local mode=$1
-    local CAPTION_DIR="CaptionEval/CaptionResult/${mode}"
+    local CAPTION_DIR="caption_eval/result/caption/${mode}"
 
     echo ""
     echo "=========================================="
@@ -37,7 +37,7 @@ run_mode() {
 
     for CAPTION_FILE in "${MODELS[@]}"; do
         MODEL_NAME="${CAPTION_FILE%%_CaptionResult*}"
-        OUTPUT_DIR="${OUTPUT_BASE}/${MODEL_NAME}_${mode}"
+        OUTPUT_DIR="${OUTPUT_BASE}/${mode}/${MODEL_NAME}"
         CAPTION_PATH="${CAPTION_DIR}/${CAPTION_FILE}"
 
         if [ ! -f "${CAPTION_PATH}" ]; then
@@ -62,7 +62,7 @@ run_mode() {
             continue
         fi
 
-        $PYTHON -m CaptionEval.AtomicEval.atomic_eval direct-align \
+        python3 -m caption_eval.atomic_eval.atomic_eval direct-align \
             --gt-facts "${GT_FACTS}" \
             --caption "${CAPTION_PATH}" \
             --output-dir "${OUTPUT_DIR}" \
@@ -76,7 +76,7 @@ run_mode() {
     RESULT_DIRS=""
     for CAPTION_FILE in "${MODELS[@]}"; do
         MODEL_NAME="${CAPTION_FILE%%_CaptionResult*}"
-        DIR="${OUTPUT_BASE}/${MODEL_NAME}_${mode}"
+        DIR="${OUTPUT_BASE}/${mode}/${MODEL_NAME}"
         if [ -f "${DIR}/dataset_summary.json" ]; then
             RESULT_DIRS="${RESULT_DIRS} ${DIR}"
         fi
@@ -85,7 +85,7 @@ run_mode() {
     if [ -n "${RESULT_DIRS}" ]; then
         echo ""
         echo "Generating cross-model summary (${mode})..."
-        $PYTHON -m CaptionEval.AtomicEval.atomic_eval summary \
+        python3 -m caption_eval.atomic_eval.atomic_eval summary \
             --results-dirs ${RESULT_DIRS} \
             --output "${OUTPUT_BASE}/cross_model_summary_${mode}.csv"
     fi
