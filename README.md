@@ -182,16 +182,11 @@ FineVLA-Policy trains VLA policies under two architectures (StarVLA-OFT and Star
 ## Citation
 
 ```bibtex
-@misc{hu2026finevla,
-  title   = {{FineVLA}: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
-  author  = {Hu, Xintong and Huang, Xuhong and Zhang, Jinyu and Yao, Yutong and Sun, Yuchong and Wang, Qiuyue and Li, Mingsheng and Xie, Sicheng and Liu, Yitao and Chen, Junhao and Chen, Yixuan and Zheng, Yingming and Bai, Shuai and Yu, Tao},
-  year    = {2026},
-  month   = may,
-  eprint  = {2605.27284},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.RO},
-  doi     = {10.48550/arXiv.2605.27284},
-  url     = {https://arxiv.org/abs/2605.27284}
+@article{hu2026finevla,
+  title={FineVLA: Fine-Grained Instruction Alignment for Steerable Vision-Language-Action Policies},
+  author={Hu, Xintong and Huang, Xuhong and Zhang, Jinyu and Yao, Yutong and Sun, Yuchong and Wang, Qiuyue and Li, Mingsheng and Xie, Sicheng and Liu, Yitao and Chen, Junhao and others},
+  journal={arXiv preprint arXiv:2605.27284},
+  year={2026}
 }
 ```
 
