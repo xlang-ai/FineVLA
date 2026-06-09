@@ -1,0 +1,132 @@
+{
+  "model_name": "doubao_doubao-seed-2-0-pro-260215",
+  "num_total_samples": 500,
+  "num_scored_samples": 500,
+  "num_errors": 0,
+  "mean_consistency_score": 0.783,
+  "mean_weighted_coverage": 0.6879,
+  "mean_weighted_anti_hallucination": 0.8945,
+  "mean_caption_score": 0.7885,
+  "per_capability": {
+    "action_sequence": {
+      "mean_consistency": 0.942,
+      "mean_coverage": 0.8718,
+      "mean_anti_hallucination": 0.93,
+      "total_G": 4073,
+      "total_C": 3953,
+      "total_M": 3269,
+      "total_P": 295,
+      "total_X": 114,
+      "total_O": 395,
+      "total_H": 275
+    },
+    "active_actor": {
+      "mean_consistency": 0.8879,
+      "mean_coverage": 0.8195,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 748,
+      "total_C": 675,
+      "total_M": 574,
+      "total_P": 68,
+      "total_X": 33,
+      "total_O": 73,
+      "total_H": 0
+    },
+    "target_object": {
+      "mean_consistency": 0.9032,
+      "mean_coverage": 0.7745,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 1200,
+      "total_C": 1006,
+      "total_M": 879,
+      "total_P": 23,
+      "total_X": 104,
+      "total_O": 194,
+      "total_H": 0
+    },
+    "initial_configuration": {
+      "mean_consistency": 0.7086,
+      "mean_coverage": 0.5741,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 665,
+      "total_C": 528,
+      "total_M": 314,
+      "total_P": 144,
+      "total_X": 70,
+      "total_O": 137,
+      "total_H": 0
+    },
+    "final_configuration": {
+      "mean_consistency": 0.7601,
+      "mean_coverage": 0.6961,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 1225,
+      "total_C": 1109,
+      "total_M": 727,
+      "total_P": 274,
+      "total_X": 108,
+      "total_O": 116,
+      "total_H": 0
+    },
+    "contact_and_approach": {
+      "mean_consistency": 0.6728,
+      "mean_coverage": 0.6332,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 1300,
+      "total_C": 1168,
+      "total_M": 568,
+      "total_P": 330,
+      "total_X": 270,
+      "total_O": 132,
+      "total_H": 0
+    },
+    "trajectory_and_orientation": {
+      "mean_consistency": 0.6736,
+      "mean_coverage": 0.6191,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 1880,
+      "total_C": 1669,
+      "total_M": 797,
+      "total_P": 640,
+      "total_X": 232,
+      "total_O": 211,
+      "total_H": 0
+    },
+    "object_interaction": {
+      "mean_consistency": 0.8152,
+      "mean_coverage": 0.2222,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 321,
+      "total_C": 86,
+      "total_M": 61,
+      "total_P": 20,
+      "total_X": 5,
+      "total_O": 235,
+      "total_H": 0
+    },
+    "failure_and_recovery": {
+      "mean_consistency": 0.4815,
+      "mean_coverage": 0.2202,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 102,
+      "total_C": 44,
+      "total_M": 9,
+      "total_P": 24,
+      "total_X": 11,
+      "total_O": 58,
+      "total_H": 0
+    },
+    "body_motion": {
+      "mean_consistency": 0.7034,
+      "mean_coverage": 0.4133,
+      "mean_anti_hallucination": 1.0,
+      "total_G": 117,
+      "total_C": 70,
+      "total_M": 40,
+      "total_P": 22,
+      "total_X": 8,
+      "total_O": 47,
+      "total_H": 0
+    }
+  }
+}

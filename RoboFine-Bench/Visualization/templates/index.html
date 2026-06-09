@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RoboFine-Bench Viewer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- Top stats bar -->
+<div id="top-bar">
+  <div class="stat-item">
+    <span class="stat-label">Samples:</span>
+    <span class="stat-value" id="total-samples">0</span>
+  </div>
+  <div class="stat-item" id="stat-accuracy">
+    <span class="stat-label">Model Accuracy:</span>
+    <span class="stat-value" id="model-accuracy">N/A</span>
+  </div>
+  <div id="cap-breakdown"></div>
+  <select id="caption-model-select">
+    <option value="">-- Select Caption Model --</option>
+  </select>
+</div>
+
+<!-- Main layout -->
+<div id="app">
+  <!-- Left: sample list -->
+  <div id="left-panel">
+    <div id="search-box">
+      <input type="text" id="search-input" placeholder="Search sample_id or instruction...">
+    </div>
+    <div id="sample-list"></div>
+  </div>
+
+  <!-- Right: detail -->
+  <div id="right-panel">
+    <div id="placeholder">Select a sample from the left panel</div>
+  </div>
+</div>
+
+<script src="/static/main.js"></script>
+</body>
+</html>
