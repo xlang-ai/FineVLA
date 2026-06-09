@@ -50,7 +50,7 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _BASE_DIR = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
 DEFAULT_EVALSETS = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
 DEFAULT_FRAME_INDEX = os.path.join(_BASE_DIR, "EvalData", "frame_index.jsonl")
-DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "CaptionEval", "CaptionResult")
+DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "caption_eval", "result", "caption")
 DEFAULT_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "Videos")
 
 _client_lock = threading.Lock()

@@ -116,7 +116,7 @@ python RoboFine-Bench/caption_eval/annotate/run_annotate.py \
     --model qwen3.5-plus \
     --evalsets EvalData/EvalSets.json \
     --frame-index EvalData/frame_index.jsonl \
-    --output-dir results/CaptionResult/ \
+    --output-dir caption_eval/result/caption/easy \
     --num-workers 16
 ```
 
@@ -126,7 +126,7 @@ python RoboFine-Bench/caption_eval/annotate/run_annotate.py \
     --model qwen3.5-plus \
     --evalsets EvalData/EvalSets.json \
     --frame-index EvalData/frame_index.jsonl \
-    --output-dir results/CaptionResult/hard/ \
+    --output-dir caption_eval/result/caption/hard \
     --num-workers 16 \
     --no-instruction
 ```
@@ -146,8 +146,8 @@ Score the generated captions against ground-truth atomic facts using Direct Alig
 ```bash
 python -m caption_eval.atomic_eval.atomic_eval direct-align \
     --gt-facts EvalData/GT_AtomicFacts.jsonl \
-    --caption results/CaptionResult/qwen3_5-plus_CaptionResult.jsonl \
-    --output-dir results/AtomicResult/qwen3_5-plus/ \
+    --caption caption_eval/result/caption/easy/qwen3_5-plus_CaptionResult.jsonl \
+    --output-dir caption_eval/result/DirectAlign/easy/qwen3_5-plus \
     --num-workers 8 \
     --enable-thinking
 ```
@@ -169,8 +169,8 @@ python -m caption_eval.atomic_eval.atomic_eval direct-align \
 
 ```bash
 python -m caption_eval.atomic_eval.atomic_eval summary \
-    --results-dirs results/AtomicResult/*/ \
-    --output results/cross_model_summary.csv
+    --results-dirs caption_eval/result/DirectAlign/easy/*/ \
+    --output caption_eval/result/DirectAlign/cross_model_summary_easy.csv
 ```
 
 Or use the batch script for all models:
@@ -179,7 +179,63 @@ bash RoboFine-Bench/caption_eval/run_direct_align.sh easy
 bash RoboFine-Bench/caption_eval/run_direct_align.sh hard
 ```
 
-## 5. Project Structure
+## 5. Result Directory Structure
+
+All evaluation results follow a fixed directory layout. The Visualization tool reads from these paths automatically.
+
+```
+RoboFine-Bench/
+├── vqa_eval/
+│   └── results/                                  # VQA evaluation results
+│       ├── {model}_vqa_result.jsonl               # Per-question model answers
+│       └── VQATest_Score.csv                      # Cross-model accuracy summary
+│
+├── caption_eval/
+│   └── result/
+│       ├── caption/                              # Generated captions
+│       │   ├── easy/                             # With task instruction
+│       │   │   └── {model}_CaptionResult.jsonl
+│       │   └── hard/                             # Without task instruction
+│       │       └── {model}_CaptionResult.jsonl
+│       └── DirectAlign/                          # DirectAlign scoring results
+│           ├── easy/
+│           │   └── {model}/
+│           │       ├── scored_results.jsonl       # Per-sample scores
+│           │       ├── dataset_summary.json       # Aggregated scores
+│           │       ├── dataset_summary.csv
+│           │       └── direct_align_raw.jsonl     # Raw GPT alignment output
+│           ├── hard/
+│           │   └── {model}/
+│           │       └── ...
+│           ├── cross_model_summary_easy.csv       # Cross-model comparison
+│           └── cross_model_summary_hard.csv
+│
+└── Visualization/                                # Result visualization web app
+    ├── app.py
+    ├── templates/index.html
+    └── static/{main.js, style.css}
+```
+
+## 6. Visualization
+
+A Flask-based web app for browsing samples, viewing model captions, VQA results, and DirectAlign scores side-by-side.
+
+```bash
+pip install flask
+cd RoboFine-Bench/Visualization
+python app.py
+# Open http://localhost:5001
+```
+
+Features:
+- Browse all 500 samples with video playback (multi-view sync)
+- **Caption & Atomic Eval tab**: Select a model to view its caption vs GT, with per-capability DirectAlign breakdown (Match/Partial/Contradiction/Omission/Hallucination)
+- **VQA tab**: Cross-model answer comparison table grouped by capability
+- **Basic Info tab**: GT annotations, fine-grained steps, QA pairs
+
+The app reads results from the paths defined in Section 5 using **relative paths** — no configuration needed. After running evaluations, simply restart the app to see new results.
+
+## 7. Project Structure
 
 ```
 RoboFine-Bench/
@@ -195,24 +251,28 @@ RoboFine-Bench/
 │   ├── vqa_report.py                  # Score reporting & CSV
 │   ├── run_vqa_eval.sh               # Batch multi-round evaluation
 │   └── run_video_eval.sh             # Video mode evaluation (3 models)
-└── caption_eval/
-    ├── annotate/
-    │   ├── run_annotate.py            # Caption generation runner
-    │   ├── api_call.py                # Unified API client (Qwen/Gemini/GPT)
-    │   ├── prompts.py                 # Caption prompt templates
-    │   └── run_annotation_eval.sh     # Batch caption generation
-    ├── run_direct_align.sh            # Batch Direct Alignment scoring
-    └── atomic_eval/
-        ├── run_judge.py               # LLM-as-a-Judge (legacy method)
-        ├── prompts/                   # Judge prompt templates
-        └── atomic_eval/              # Core evaluation package
-            ├── cli.py                 # CLI subcommands
-            ├── pipeline.py            # Evaluation pipeline
-            ├── scoring.py             # Metric computation
-            └── ...
+├── caption_eval/
+│   ├── annotate/
+│   │   ├── run_annotate.py            # Caption generation runner
+│   │   ├── api_call.py                # Unified API client (Qwen/Gemini/GPT)
+│   │   ├── prompts.py                 # Caption prompt templates
+│   │   └── run_annotation_eval.sh     # Batch caption generation
+│   ├── run_direct_align.sh            # Batch Direct Alignment scoring
+│   └── atomic_eval/
+│       ├── run_judge.py               # LLM-as-a-Judge (legacy method)
+│       ├── prompts/                   # Judge prompt templates
+│       └── atomic_eval/              # Core evaluation package
+│           ├── cli.py                 # CLI subcommands
+│           ├── pipeline.py            # Evaluation pipeline
+│           ├── scoring.py             # Metric computation
+│           └── ...
+└── Visualization/
+    ├── app.py                         # Flask backend (relative paths)
+    ├── templates/index.html           # Web UI
+    └── static/                        # JS + CSS
 ```
 
-## 6. Supported Models
+## 8. Supported Models
 
 The evaluation scripts support multiple VLM providers out of the box:
 
@@ -223,7 +283,7 @@ The evaluation scripts support multiple VLM providers out of the box:
 | OpenAI | `openai.gpt-5.4-2026-03-05` |
 | Doubao | `doubao.doubao-seed-2-0-pro-260215` |
 
-## 7. DashScope API: Video Input Modes
+## 9. DashScope API: Video Input Modes
 
 > **Note:** This section documents DashScope-specific calling conventions for each model.
 
@@ -288,7 +348,7 @@ The evaluation scripts support multiple VLM providers out of the box:
 | Video URL (1 fps) | — | **693** | N/A |
 | Video URL (2 fps) | **1,918** | **1,323** | N/A |
 
-## 8. Evaluate RoboFine-VLM (Local vLLM)
+## 10. Evaluate RoboFine-VLM (Local vLLM)
 
 RoboFine-VLM is a Qwen3.5-397B-A17B SFT model. This section covers local deployment via vLLM and running both VQA and Caption evaluations.
 
@@ -340,7 +400,7 @@ python caption_eval/annotate/run_annotate.py \
     --input-type image \
     --fps 4 \
     --video-dir EvalData/videos \
-    --output-dir CaptionEval/CaptionResult/easy \
+    --output-dir caption_eval/result/caption/easy \
     --num-workers 2
 ```
 
@@ -352,7 +412,7 @@ python caption_eval/annotate/run_annotate.py \
     --input-type image \
     --fps 4 \
     --video-dir EvalData/videos \
-    --output-dir CaptionEval/CaptionResult/hard \
+    --output-dir caption_eval/result/caption/hard \
     --num-workers 2 \
     --no-instruction
 ```
@@ -363,8 +423,8 @@ python caption_eval/annotate/run_annotate.py \
 ```bash
 python -m caption_eval.atomic_eval.atomic_eval direct-align \
     --gt-facts EvalData/GT_AtomicFacts.jsonl \
-    --caption CaptionEval/CaptionResult/easy/xxx_CaptionResult.jsonl \
-    --output-dir CaptionEval/AtomicResult/RoboFine_easy/ \
+    --caption caption_eval/result/caption/easy/xxx_CaptionResult.jsonl \
+    --output-dir caption_eval/result/DirectAlign/easy/RoboFine-VLM/ \
     --num-workers 8 \
     --enable-thinking
 ```
@@ -389,7 +449,7 @@ python vqa_eval/run_vqa.py \
 - **Frame resize:** Frames are resized to 512px width (preserving aspect ratio) to match SFT training conditions and stay within the 262K token context limit.
 - **Resume:** Both scripts support automatic resume — already-completed samples are skipped on re-run.
 
-## 9. Evaluate Your Own Model
+## 11. Evaluate Your Own Model
 
 ### Custom Model
 
