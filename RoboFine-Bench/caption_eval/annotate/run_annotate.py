@@ -34,10 +34,14 @@ from typing import Dict, List, Optional, Set, Tuple
 from tqdm import tqdm
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_BASE_DIR = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+sys.path.insert(0, _BASE_DIR)
 sys.path.insert(0, _SCRIPT_DIR)
 
-from api_call import call_api, create_api_client, extract_json_from_response
+from api_call import extract_json_from_response
 from prompts import SINGLE_VIEW_PROMPT, MULTI_VIEW_PROMPT, classify_view
+from caption_eval.adapters import create_caption_adapter
+from caption_eval.adapters.base import CaptionRequest, CaptionView
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,24 +50,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("annotation")
 
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_BASE_DIR = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
 DEFAULT_EVALSETS = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
 DEFAULT_FRAME_INDEX = os.path.join(_BASE_DIR, "EvalData", "frame_index.jsonl")
 DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "caption_eval", "result", "caption")
 DEFAULT_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "Videos")
-
-_client_lock = threading.Lock()
-_client = None
-
-
-def _get_client(base_url: str = None):
-    global _client
-    if _client is None:
-        with _client_lock:
-            if _client is None:
-                _client = create_api_client(base_url=base_url)
-    return _client
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +191,7 @@ def build_image_parts(
 ) -> Tuple[List[Dict], int, int]:
     """Build image_parts list from frame_index views.
 
-    Always includes [View: label] tags. For 3-view samples, only the main view is used.
+    Always includes [View: label] tags and keeps all available views.
 
     Returns: (image_parts, num_views_used, total_frames)
     """
@@ -319,7 +309,7 @@ def build_image_parts_from_video(
 ) -> Tuple[List[Dict], int, int]:
     """Build image_parts by decoding local video files.
 
-    Always includes [View: label] tags. For 3-view samples, only the main view is used.
+    Always includes [View: label] tags and keeps all available views.
 
     Returns: (image_parts, num_views_used, total_frames)
     """
@@ -348,6 +338,26 @@ def build_image_parts_from_video(
     return image_parts, views_used, total_frames
 
 
+def build_caption_views(
+    view_names: List[str],
+    video_urls: List[str] = None,
+    frame_views: Dict = None,
+) -> List[CaptionView]:
+    """Build standardized per-view metadata for model adapters."""
+    views = []
+    video_urls = video_urls or []
+    frame_views = frame_views or {}
+    for i, vn in enumerate(view_names):
+        frame_data = frame_views.get(vn, {}) if isinstance(frame_views, dict) else {}
+        views.append(CaptionView(
+            name=vn,
+            label=classify_view(vn, i),
+            video_url=video_urls[i] if i < len(video_urls) else None,
+            frame_urls=list(frame_data.get("urls", [])),
+        ))
+    return views
+
+
 # ---------------------------------------------------------------------------
 # Per-sample processing
 # ---------------------------------------------------------------------------
@@ -355,8 +365,7 @@ def build_image_parts_from_video(
 def process_one_sample(
     sample: Dict,
     frame_views: Dict,
-    model: str,
-    base_url: str = None,
+    adapter,
     no_instruction: bool = False,
     input_type: str = "video",
     fps: float = 4.0,
@@ -403,21 +412,31 @@ def process_one_sample(
         return {
             "sample_id": sid,
             "dataset": dataset,
-            "model": model,
+            "model": adapter.model_name,
             "call_success": False,
             "error": "No frames or video URLs available",
             "timestamp": datetime.now().isoformat(),
         }
 
     system_prompt, user_prompt = build_prompt(view_names, instruction_raw, no_instruction=no_instruction)
-    client = _get_client(base_url)
+    caption_views = build_caption_views(view_names, video_urls=video_urls, frame_views=frame_views)
+    request = CaptionRequest(
+        sample_id=sid,
+        dataset=dataset,
+        input_type=input_type,
+        fps=fps,
+        prompt=user_prompt,
+        system_prompt=system_prompt,
+        views=caption_views,
+        image_parts=image_parts,
+        video_urls=video_urls or [],
+    )
 
     start_t = time.time()
-    response_text, token_usage = call_api(
-        client, image_parts, system_prompt, user_prompt, model,
-        video_urls=video_urls, fps=fps,
-    )
+    response = adapter.generate_caption(request)
     elapsed = time.time() - start_t
+    response_text = response.text
+    token_usage = response.token_usage
 
     parsed = extract_json_from_response(response_text) if response_text else None
     caption_result = _json_to_step_list(parsed)
@@ -426,7 +445,8 @@ def process_one_sample(
     result = {
         "sample_id": sid,
         "dataset": dataset,
-        "model": model,
+        "model": adapter.model_name,
+        "adapter": adapter.__class__.__name__,
         "instruction_raw": instruction_raw if not isinstance(instruction_raw, list) else "; ".join(instruction_raw),
         "caption_result": caption_result,
         "call_success": success,
@@ -455,6 +475,10 @@ def main():
                         help="Local video directory (for image mode fallback)")
     parser.add_argument("--output", default=None, help="Output JSONL path (auto-generated if omitted)")
     parser.add_argument("--output-dir", default=None, help="Output directory (overrides default CaptionResult dir)")
+    parser.add_argument("--adapter", default="openai-compatible",
+                        help="Model adapter name (default: openai-compatible)")
+    parser.add_argument("--api-key", default=None,
+                        help="API key for the selected adapter (default: OPENAI_API_KEY)")
     parser.add_argument("--base-url", default=None, help="API base URL")
     parser.add_argument("--num-workers", type=int, default=16, help="Parallel workers")
     parser.add_argument("--start", type=int, default=None, help="Start sample index")
@@ -469,6 +493,7 @@ def main():
         args.output = os.path.join(out_dir, f"{model_tag}_CaptionResult.jsonl")
 
     logger.info(f"Model:        {args.model}")
+    logger.info(f"Adapter:      {args.adapter}")
     logger.info(f"Input type:   {args.input_type}")
     logger.info(f"FPS:          {args.fps}")
     logger.info(f"Output:       {args.output}")
@@ -505,8 +530,14 @@ def main():
         logger.info("All samples already completed!")
         return
 
-    # Init client
-    _get_client(args.base_url)
+    # Init model adapter. The benchmark runner owns data/prompt/parsing; the
+    # adapter only translates CaptionRequest into a model/API call.
+    adapter = create_caption_adapter(
+        args.adapter,
+        model=args.model,
+        api_key=args.api_key,
+        base_url=args.base_url,
+    )
 
     # Dataset stats
     from collections import Counter
@@ -530,8 +561,8 @@ def main():
                 sid = s["sample_id"]
                 fv = frame_index.get(sid, {})
                 fut = pool.submit(
-                    process_one_sample, s, fv, args.model,
-                    args.base_url, args.no_instruction,
+                    process_one_sample, s, fv, adapter,
+                    args.no_instruction,
                     input_type=args.input_type, fps=args.fps,
                     video_dir=args.video_dir,
                 )
@@ -555,7 +586,8 @@ def main():
                     logger.error(f"EXCEPTION {sid}: {e}")
                     err_result = {
                         "sample_id": sid,
-                        "model": args.model,
+                        "model": adapter.model_name,
+                        "adapter": adapter.__class__.__name__,
                         "call_success": False,
                         "error": str(e)[:500],
                         "timestamp": datetime.now().isoformat(),

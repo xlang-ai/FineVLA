@@ -109,27 +109,161 @@ Supports resume: already-evaluated questions are automatically skipped on re-run
 
 The Caption track evaluates step-level action description quality through atomic fact alignment. It runs in two stages: **(A) Generate captions** → **(B) Score against GT atomic facts**.
 
+### Official Caption Benchmark Setting
+
+Use the following setting for the main RoboFine-Bench Caption benchmark. Runs that change any of these items should be reported as ablations, not as the default benchmark score.
+
+| Item | Fixed setting |
+|------|---------------|
+| Evaluation split | `EvalData/EvalSets.json`, 500 samples |
+| View input | Use **all available views** for every sample, preserving the original `200/100/200` distribution of 1-view/2-view/3-view samples |
+| View order | Follow `meta.view_names` order in `EvalSets.json`; do not drop wrist/side views |
+| View labels | Preserve `[View: ...]` text labels before each view |
+| Main leaderboard mode | **Hard mode**: do not include `instruction_raw` in the prompt |
+| Optional mode | **Easy mode**: include `instruction_raw` in the prompt; report separately from Hard |
+| Prompt/PE | Current RB new prompt in `caption_eval/annotate/prompts.py` |
+| FPS | `fps=4` for both video and image/frame inputs |
+| Input tracks | Report `MV-Video` and `MV-Image` separately |
+| Pixel parameters | Do **not** explicitly set `min_pixels`, `max_pixels`, `total_pixels`, or `mm_processor_kwargs` |
+| Output format | JSON only, parsed into `caption_result: ["step 1", "step 2", ...]` |
+| Required completion | Report 500 successful caption generations and the number of scored samples |
+| Scoring | Direct Alignment against `EvalData/GT_AtomicFacts.jsonl`; judge LLM must be reported |
+
+The default leaderboard benchmark is intentionally instruction-free. This tests whether a model can infer the fine-grained manipulation procedure from visual evidence alone. Users may also run Easy mode to measure performance with task instruction context, but Easy and Hard scores should be reported separately. Single-view input, AP prompts, custom pixel settings, and alternative view distributions are useful ablations, but they should be named and reported separately.
+
+Two official input tracks are supported:
+
+| Track | Input representation | Notes |
+|-------|----------------------|-------|
+| `MV-Video` | Direct video URLs, one video per available view | Preferred when the model API accepts video parts directly |
+| `MV-Image` | Decoded or pre-uploaded image frames, grouped by view | Use the same `fps=4`; if using a frame index, keep it fixed across models |
+
 ### Stage A: Generate Captions
 
+Main benchmark, `MV-Video` track:
+
 ```bash
-python RoboFine-Bench/caption_eval/annotate/run_annotate.py \
+export OPENAI_API_KEY="your-api-key"
+
+python RoboFine-Bench/caption_eval/run_caption_benchmark.py \
     --model qwen3.5-plus \
-    --evalsets EvalData/EvalSets.json \
-    --frame-index EvalData/frame_index.jsonl \
-    --output-dir caption_eval/result/caption/easy \
+    --adapter openai-compatible \
+    --base-url https://dashscope.aliyuncs.com/compatible-mode/v1 \
+    --mode hard \
+    --input-type video \
     --num-workers 16
 ```
 
-For **hard mode** (no task instruction in prompt):
+Main benchmark, `MV-Image` track:
+
 ```bash
-python RoboFine-Bench/caption_eval/annotate/run_annotate.py \
+export OPENAI_API_KEY="your-api-key"
+
+python RoboFine-Bench/caption_eval/run_caption_benchmark.py \
     --model qwen3.5-plus \
-    --evalsets EvalData/EvalSets.json \
-    --frame-index EvalData/frame_index.jsonl \
-    --output-dir caption_eval/result/caption/hard \
-    --num-workers 16 \
-    --no-instruction
+    --adapter openai-compatible \
+    --base-url https://dashscope.aliyuncs.com/compatible-mode/v1 \
+    --mode hard \
+    --input-type image \
+    --num-workers 16
 ```
+
+Do not pass model-specific pixel overrides such as `min_pixels`, `max_pixels`, `total_pixels`, or `mm_processor_kwargs` for the official benchmark setting. If a model requires such parameters to run, include them in the experiment name and report the run as a non-standard pixel configuration.
+
+`run_caption_benchmark.py` is the recommended entry point for new evaluations. It fixes all available views, `fps=4`, RB new prompt, and no explicit pixel overrides. It defaults to `--mode hard`; use `--mode easy` to include task instructions and report Easy scores separately. The older `caption_eval/annotate/run_annotate.py` script remains available for ablations.
+
+### Custom Model Adapters
+
+Model-specific code is isolated under `caption_eval/adapters/`. The benchmark runner owns data loading, view labels, prompt construction, output parsing, and result formatting; adapters only translate a standardized request into a model/API call.
+
+Built-in adapter:
+
+| Adapter | Use case |
+|---------|----------|
+| `openai-compatible` | DashScope compatible-mode, OpenAI-compatible vLLM servers, OpenAI-style multimodal chat APIs |
+
+For a non-compatible API or local model, copy `caption_eval/adapters/local_example.py`, implement `generate_caption()`, and register it in `caption_eval/adapters/__init__.py`. A custom adapter receives a `CaptionRequest` with ordered views, view labels, video URLs, image parts, `fps=4`, and the RB new prompt for the selected mode. It must return raw model text and optional token usage; the benchmark runner will parse the JSON into `caption_result`.
+
+### Evaluate Your Own VLM
+
+There are three supported ways to evaluate a new VLM.
+
+**Option 1: Your model exposes an OpenAI-compatible API**
+
+Use the built-in `openai-compatible` adapter. This works for DashScope compatible-mode, OpenAI-compatible vLLM servers, and similar multimodal chat APIs.
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+
+python RoboFine-Bench/caption_eval/run_caption_benchmark.py \
+    --model your-model-name \
+    --adapter openai-compatible \
+    --base-url http://your-server:8000/v1 \
+    --mode hard \
+    --input-type video \
+    --num-workers 16
+```
+
+Use `--input-type image` if your API does not support direct video parts but can accept image/frame inputs. Use `--mode easy` to include task instructions and report Easy scores separately.
+
+**Option 2: Your model uses a custom API or local inference code**
+
+Copy the template adapter and implement one method:
+
+```bash
+cp RoboFine-Bench/caption_eval/adapters/local_example.py \
+   RoboFine-Bench/caption_eval/adapters/my_model.py
+```
+
+Implement `generate_caption()` in `my_model.py`. The method receives a `CaptionRequest`:
+
+```python
+def generate_caption(self, request):
+    # request.views: ordered multi-view metadata with view labels
+    # request.video_urls: one video URL per view for video mode
+    # request.image_parts: interleaved [View: ...] text and image_url parts for image mode
+    # request.prompt: RB new prompt for the selected hard/easy mode
+    # request.fps: fixed to 4
+    ...
+    return CaptionResponse(
+        text=model_output_text,
+        token_usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    )
+```
+
+Register the adapter in `caption_eval/adapters/__init__.py`, then run:
+
+```bash
+python RoboFine-Bench/caption_eval/run_caption_benchmark.py \
+    --model your-model-name \
+    --adapter my-model \
+    --mode hard \
+    --input-type image \
+    --num-workers 1
+```
+
+**Option 3: You already have caption outputs**
+
+Skip caption generation and write a `CaptionResult.jsonl` file directly. Each line should include:
+
+```json
+{"sample_id": "sample-id", "caption_result": ["step 1", "step 2"], "call_success": true}
+```
+
+Then run Direct Alignment scoring with your chosen judge LLM:
+
+```bash
+python -m caption_eval.atomic_eval.atomic_eval direct-align \
+    --gt-facts EvalData/GT_AtomicFacts.jsonl \
+    --caption path/to/your_CaptionResult.jsonl \
+    --output-dir caption_eval/result/DirectAlign/hard_video/your-model \
+    --model openai.gpt-5.4-2026-03-05 \
+    --base-url https://dashscope.aliyuncs.com/compatible-mode/v1 \
+    --num-workers 8 \
+    --enable-thinking
+```
+
+For all options, report the mode (`hard` or `easy`), input track (`MV-Video` or `MV-Image`), judge LLM, number of successful caption generations, number of scored samples, and token usage if available.
 
 Or use the batch script:
 ```bash
@@ -144,13 +278,19 @@ bash RoboFine-Bench/caption_eval/annotate/run_annotation_eval.sh hard    # witho
 Score the generated captions against ground-truth atomic facts using Direct Alignment:
 
 ```bash
+export OPENAI_API_KEY="your-api-key"
+
 python -m caption_eval.atomic_eval.atomic_eval direct-align \
     --gt-facts EvalData/GT_AtomicFacts.jsonl \
-    --caption caption_eval/result/caption/easy/qwen3_5-plus_CaptionResult.jsonl \
-    --output-dir caption_eval/result/DirectAlign/easy/qwen3_5-plus \
+    --caption caption_eval/result/caption/hard_video/qwen3_5-plus_CaptionResult.jsonl \
+    --output-dir caption_eval/result/DirectAlign/hard_video/qwen3_5-plus \
+    --model openai.gpt-5.4-2026-03-05 \
+    --base-url https://dashscope.aliyuncs.com/compatible-mode/v1 \
     --num-workers 8 \
     --enable-thinking
 ```
+
+The Direct Alignment judge can be GPT, Gemini, Claude, Qwen, or another instruction-following LLM exposed through a compatible API. Set the judge endpoint with `--model`, `--base-url`, and either `--api-key` or the `OPENAI_API_KEY` environment variable. For fair comparison, report the judge model and endpoint together with the caption score; scores produced by different judge LLMs should not be mixed without noting the judge difference.
 
 **Scoring metrics:**
 
@@ -169,8 +309,8 @@ python -m caption_eval.atomic_eval.atomic_eval direct-align \
 
 ```bash
 python -m caption_eval.atomic_eval.atomic_eval summary \
-    --results-dirs caption_eval/result/DirectAlign/easy/*/ \
-    --output caption_eval/result/DirectAlign/cross_model_summary_easy.csv
+    --results-dirs caption_eval/result/DirectAlign/hard_video/*/ \
+    --output caption_eval/result/DirectAlign/cross_model_summary_hard_video.csv
 ```
 
 Or use the batch script for all models:
