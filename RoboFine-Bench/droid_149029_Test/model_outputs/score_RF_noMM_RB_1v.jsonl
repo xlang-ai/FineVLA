@@ -1,0 +1,1 @@
+{"sample_id": "droid_robointer-149029", "dataset": "DROID-Robointer", "model": "RoboFine-noMM", "caption_result": ["Grasp the vertical handle on the right edge of the red microwave door from the front.", "Pull the handle horizontally to the left to swing the microwave door open.", "Release the handle once the door is fully open."], "call_success": true}

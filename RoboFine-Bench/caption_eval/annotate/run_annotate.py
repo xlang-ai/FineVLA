@@ -166,7 +166,7 @@ def load_completed(output_path: str) -> Set[str]:
             try:
                 r = json.loads(line)
                 sid = r.get("sample_id", "")
-                if r.get("call_success"):
+                if r.get("call_success") and sid not in done:
                     done.add(sid)
                     keep_lines.append(line)
             except json.JSONDecodeError:
@@ -227,6 +227,14 @@ def build_image_parts(
     return image_parts, views_used, total_frames
 
 
+def _clean_instruction_item(item: str) -> str:
+    """Clean a single instruction item: Galaxea 'zh@en' keeps only English."""
+    s = str(item).strip()
+    if "@" in s:
+        s = s.split("@", 1)[1].strip()
+    return s
+
+
 def build_prompt(view_names: List[str], instruction_raw, no_instruction: bool = False) -> Tuple[str, str]:
     """Return (system_prompt, user_prompt) based on view count.
 
@@ -234,18 +242,37 @@ def build_prompt(view_names: List[str], instruction_raw, no_instruction: bool = 
     user_prompt is the full annotation prompt.
     If no_instruction is True, instruction_raw is not appended.
     """
-    if isinstance(instruction_raw, list):
-        instr = "; ".join(instruction_raw)
-    else:
-        instr = str(instruction_raw or "")
-
     if len(view_names) > 1:
         prompt = MULTI_VIEW_PROMPT
     else:
         prompt = SINGLE_VIEW_PROMPT
 
-    if instr and not no_instruction:
-        prompt += f"\n\nTask instruction: {instr}"
+    if no_instruction:
+        return "", prompt
+
+    if isinstance(instruction_raw, (list, tuple)):
+        cleaned = [_clean_instruction_item(x) for x in instruction_raw if str(x).strip()]
+        cleaned = [c for c in cleaned if c]
+    else:
+        s = str(instruction_raw or "").strip()
+        cleaned = [s] if s else []
+
+    if not cleaned:
+        return "", prompt
+
+    if len(cleaned) == 1:
+        prompt += (
+            f'\n\nThe raw task instruction for this robotic manipulation is: "{cleaned[0]}". '
+            f'You may use this as context to assist your annotation.'
+        )
+    else:
+        prompt += (
+            '\n\nThe raw task instruction for this robotic manipulation consists of '
+            'the following sequential sub-steps. Describe what the robot physically '
+            'does to accomplish them:\n'
+        )
+        for i, c in enumerate(cleaned, 1):
+            prompt += f'{i}. {c}\n'
 
     return "", prompt
 

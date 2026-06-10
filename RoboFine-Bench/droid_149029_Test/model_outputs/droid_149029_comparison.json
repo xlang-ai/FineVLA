@@ -1,0 +1,37 @@
+{
+  "GT": {
+    "steps": [
+      "Approach the handle on the right side of the microwave door lying on the back left of the table from the upper right, grasp it by its upper section, and pull it outward and to the left, then release gripper and push the door to further open it by touching its upper edge, then retract the arm."
+    ],
+    "instruction": [
+      "pull the handle of the microwave to open the microwave"
+    ]
+  },
+  "SFT-v2": {
+    "steps": [
+      "Approach the vertical handle on the right side of the red microwave door from above and grasp it.",
+      "Pull the handle horizontally to the left, swinging the door open around its left-side hinge.",
+      "Release the handle and retract the arm upwards and away from the microwave."
+    ],
+    "frames": 166,
+    "views": 1,
+    "tokens": {
+      "prompt_tokens": 12378,
+      "completion_tokens": 77,
+      "total_tokens": 12455
+    }
+  },
+  "SFT_0420_AP": {
+    "steps": [
+      "Approach the microwave from the upper right, grasp the vertical handle on the right side of the door, and pull it backward and to the left to swing the door open.",
+      "Release the gripper and retract the arm upward."
+    ],
+    "frames": 166,
+    "views": 1,
+    "tokens": {
+      "prompt_tokens": 12378,
+      "completion_tokens": 63,
+      "total_tokens": 12441
+    }
+  }
+}

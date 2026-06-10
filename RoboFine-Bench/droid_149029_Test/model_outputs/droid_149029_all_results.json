@@ -1,0 +1,38 @@
+{
+  "SFT-v2_AP_1view": {
+    "steps": [
+      "Approach the vertical handle on the right side of the red microwave door from above and grasp it.",
+      "Pull the handle horizontally to the left, swinging the door open around its left-side hinge.",
+      "Release the handle and retract the arm upwards and away from the microwave."
+    ],
+    "tokens": 12378
+  },
+  "SFT0420_AP_1view": {
+    "steps": [
+      "Approach the microwave from the upper right, grasp the vertical handle on the right side of the door, and pull it backward and to the left to swing the door open.",
+      "Release the gripper and retract the arm upward."
+    ],
+    "tokens": 12378
+  },
+  "SFT0420_RB_1view": {
+    "steps": [
+      "Grasp the vertical handle on the right side of the red microwave door from the front.",
+      "Pull the handle horizontally to the left to unlatch and open the microwave door.",
+      "Release the handle once the door is fully open."
+    ],
+    "tokens": 12387
+  },
+  "SFT0420_RB_2view": {
+    "steps": [
+      "The arm approaches the red microwave from the right, grasps the vertical handle on the right edge of the door, and pulls it outward and to the left to swing the door open.",
+      "The arm grasps the handle of the red microwave from the front and pulls it outward to the left, swinging the door open to reveal the interior."
+    ],
+    "tokens": 24462
+  },
+  "SFT0420_AP_base64": {
+    "steps": [
+      "Approach the microwave from the upper right, grasp the vertical handle on the right side of the door, and pull it backward and to the left to swing the door open."
+    ],
+    "tokens": 12378
+  }
+}

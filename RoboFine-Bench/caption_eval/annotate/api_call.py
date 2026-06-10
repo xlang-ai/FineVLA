@@ -458,35 +458,58 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
         for p in image_parts:
             if p.get("type") == "text":
                 if cur_frames:
-                    content.append({"type": "video", "video": [f["image_url"]["url"] for f in cur_frames]})
+                    vpart = {"type": "video", "video": [f["image_url"]["url"] for f in cur_frames]}
+                    if fps is not None:
+                        vpart["fps"] = fps
+                    content.append(vpart)
                     cur_frames = []
                 content.append(p)
             elif p.get("type") == "image_url":
                 cur_frames.append(p)
         if cur_frames:
-            content.append({"type": "video", "video": [f["image_url"]["url"] for f in cur_frames]})
+            vpart = {"type": "video", "video": [f["image_url"]["url"] for f in cur_frames]}
+            if fps is not None:
+                vpart["fps"] = fps
+            content.append(vpart)
         content.append({"type": "text", "text": combined_text})
         messages = [{"role": "user", "content": content}]
     elif _is_qwen_model(model) and is_oss:
         url_list = [p["image_url"]["url"] for p in image_parts if p.get("type") == "image_url"]
         combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
+        vpart = {"type": "video", "video": url_list}
+        if fps is not None:
+            vpart["fps"] = fps
         messages = [{"role": "user", "content": [
-            {"type": "video", "video": url_list},
+            vpart,
             {"type": "text", "text": combined_text},
         ]}]
     elif _is_qwen_model(model):
         combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
-        url_list = [p["image_url"]["url"] for p in image_parts if p.get("type") == "image_url"]
-        if len(url_list) >= 4:
-            messages = [{"role": "user", "content": [
-                {"type": "video", "video": url_list},
-                {"type": "text", "text": combined_text},
-            ]}]
-        else:
-            messages = [{"role": "user", "content": [
-                *image_parts,
-                {"type": "text", "text": combined_text},
-            ]}]
+        content = []
+        buffer_urls = []
+
+        def _flush_video():
+            if buffer_urls:
+                vpart = {"type": "video", "video": list(buffer_urls)}
+                if fps is not None:
+                    vpart["fps"] = fps
+                content.append(vpart)
+                buffer_urls.clear()
+
+        for part in image_parts:
+            ptype = part.get("type")
+            if ptype == "image_url":
+                buffer_urls.append(part["image_url"]["url"])
+            elif ptype == "text":
+                _flush_video()
+                content.append({"type": "text", "text": part.get("text", "")})
+            else:
+                _flush_video()
+                content.append(part)
+        _flush_video()
+
+        content.append({"type": "text", "text": combined_text})
+        messages = [{"role": "user", "content": content}]
     elif _is_gpt_thinking_model(model):
         messages = [
             {"role": "developer", "content": system_prompt},
@@ -501,18 +524,9 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
     extra = None
     m = model.lower()
     _base = str(client.base_url)
-    if "robofine" in m and ("localhost" in _base or "127.0.0.1" in _base):
+    _is_dashscope = "dashscope" in _base or "aliyuncs" in _base
+    if _is_qwen_model(model) and not _is_dashscope:
         extra = {"chat_template_kwargs": {"enable_thinking": False}}
-        mm_kwargs = {
-            "min_pixels": 128 * 32 * 32,
-            "max_pixels": 1024 * 32 * 32,
-            "total_pixels": 224000 * 32 * 32,
-        }
-        if video_urls:
-            mm_kwargs["fps"] = fps or 4
-            mm_kwargs["do_sample_frames"] = True
-            mm_kwargs["max_frames"] = 512
-        extra["mm_processor_kwargs"] = mm_kwargs
     elif "qwen" in m or "qvq" in m:
         extra = {"qwen": {"thinking_config": {"enable_thinking": True}}}
     elif _is_gpt_thinking_model(model) and not _is_gpt_responses_api_model(model):
@@ -521,7 +535,7 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
     for attempt in range(MAX_RETRIES):
         try:
             kwargs = {"model": model, "messages": messages}
-            if "robofine" in (model or "").lower():
+            if _is_qwen_model(model) and not _is_dashscope:
                 kwargs["temperature"] = 0.0
                 kwargs["top_p"] = 0.95
                 kwargs["max_tokens"] = 32768

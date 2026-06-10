@@ -26,8 +26,8 @@ Rules:
 - If a detail is unclear or not visible, omit it.
 - Mention dual-arm coordination only when both arms are active; label it as stabilize-and-act, simultaneous, sequential, or handoff.
 
-Output JSON only (no step numbering, just descriptions):
-{"steps": ["grasp the red block from the table with the right gripper", "lift the block upward", "..."]}
+Output JSON only:
+{ "Step1": "...", "Step2": "...", "StepN": "..." }
 """
 
 
@@ -63,21 +63,38 @@ Rules:
 - Keep descriptions concise, action-oriented, and literal.
 - Mention dual-arm coordination only when both arms actively contribute to the same manipulation event; use stabilize-and-act, simultaneous, or handoff when applicable.
 
-Output JSON only (no step numbering, just descriptions):
-{"steps": ["grasp the red block from the table with the right gripper", "lift the block upward", "..."]}"""
+Output JSON only:
+{ "Step1": "...", "Step2": "...", "StepN": "..." }"""
 
 
 def classify_view(view_name: str, index: int) -> str:
     """Map a view_name to a human-readable label for multi-view prompts.
 
     index=0 is always the main view. Others are classified by name keywords.
+
+    Covers all 10 datasets:
+      - DROID/RH20T: ['primary', 'wrist'] → main + wrist
+      - Galaxea: ['head_rgb', 'left_wrist_rgb', 'right_wrist_rgb']
+      - RDT: ['main', 'left_wrist', 'right_wrist']
+      - RoboCoin: varies (cam_high_rgb, cam_front_rgb, cam_left_wrist_rgb, etc.)
+      - RoboMIND: camera_top/front + camera_left/right or camera_wrist_left/right
     """
     if index == 0:
         return "This is the main view of the video."
 
     vn = view_name.lower()
-    if "left" in vn:
+    is_wrist = "wrist" in vn
+    is_left = "left" in vn
+    is_right = "right" in vn
+
+    if is_left and is_wrist:
         return "This is the left wrist view of the video."
-    if "right" in vn:
+    if is_right and is_wrist:
         return "This is the right wrist view of the video."
+    if is_wrist:
+        return "This is the wrist view of the video."
+    if is_left:
+        return "This is the left side view of the video."
+    if is_right:
+        return "This is the right side view of the video."
     return f"This is the {view_name} view of the video."
