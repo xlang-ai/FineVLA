@@ -17,7 +17,7 @@ hf_*/
 logs/
 inputs/
 outputs/
-droid_149029_Test/
+
 .DS_Store
 .vscode/
 .idea/
@@ -29,4 +29,5 @@ RoboFine-Bench/caption_eval/annotate/results/
 外部api模型接入列表.csv
 RoboFine-Bench/caption_eval/result/
 CaptionEval/
+droid_149029_Test/
 scripts
