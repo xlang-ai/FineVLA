@@ -53,7 +53,7 @@ logger = logging.getLogger("annotation")
 DEFAULT_EVALSETS = os.path.join(_BASE_DIR, "EvalData", "EvalSets.json")
 DEFAULT_FRAME_INDEX = os.path.join(_BASE_DIR, "EvalData", "frame_index.jsonl")
 DEFAULT_OUTPUT_DIR = os.path.join(_BASE_DIR, "caption_eval", "result", "caption")
-DEFAULT_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "Videos")
+DEFAULT_VIDEO_DIR = os.path.join(_BASE_DIR, "EvalData", "videos")
 
 
 # ---------------------------------------------------------------------------

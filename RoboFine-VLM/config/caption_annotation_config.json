@@ -1,0 +1,37 @@
+{
+  "benchmark_setting": {
+    "views": "all_available_views",
+    "fps": 4.0,
+    "max_frames_per_view": 512,
+    "resize_width": 512,
+    "prompt_family": "RB_new",
+    "default_mode": "hard",
+    "supported_modes": ["hard", "easy"],
+    "input_type": "image_frames_grouped_as_video_parts",
+    "temperature": 0.0,
+    "top_p": 0.95,
+    "max_tokens": 32768,
+    "pixel_overrides": {
+      "min_pixels": null,
+      "max_pixels": null,
+      "total_pixels": null,
+      "mm_processor_kwargs": null
+    },
+    "output_format": "{ \"Step1\": \"...\", \"Step2\": \"...\", \"StepN\": \"...\" }"
+  },
+  "view_labeling": {
+    "policy": "dynamic",
+    "rule": "index 0 is always main; later views are classified by view name keywords such as left, right, and wrist",
+    "examples": [
+      "[View: This is the main view of the video.]",
+      "[View: This is the left wrist view of the video.]",
+      "[View: This is the right wrist view of the video.]"
+    ]
+  },
+  "api_defaults": {
+    "base_url": "http://localhost:8000/v1",
+    "model": "robofine-vlm",
+    "api_key": "EMPTY"
+  },
+  "prompt_module": "robofine_caption_prompt.py"
+}

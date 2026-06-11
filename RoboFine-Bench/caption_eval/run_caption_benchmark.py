@@ -18,7 +18,7 @@ from caption_eval.annotate import run_annotate
 
 DEFAULT_EVALSETS = os.path.join(ROOT_DIR, "EvalData", "EvalSets.json")
 DEFAULT_FRAME_INDEX = os.path.join(ROOT_DIR, "EvalData", "frame_index.jsonl")
-DEFAULT_VIDEO_DIR = os.path.join(ROOT_DIR, "EvalData", "Videos")
+DEFAULT_VIDEO_DIR = os.path.join(ROOT_DIR, "EvalData", "videos")
 DEFAULT_OUTPUT_ROOT = os.path.join(ROOT_DIR, "caption_eval", "result", "caption")
 
 
