@@ -39,7 +39,7 @@ class DatasetConfig:
     sub_dataset_depth: int = 1
 
     # ── Pose Representation ──
-    rot_type: str = “quaternion”  # “quaternion” | “euler” | “rotation_vector” | “none” means pure joint space, no Cartesian EEF
+    rot_type: str = "quaternion"  # "quaternion" | "euler" | "rotation_vector" | "none" means pure joint space, no Cartesian EEF
 
     # ── Single-arm / Dual-arm ──
     available_sides: list[str] = field(default_factory=lambda: ["right"])
