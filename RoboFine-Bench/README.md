@@ -3,6 +3,7 @@
 Evaluation code for **RoboFine-Bench** — a benchmark for fine-grained robotic manipulation video understanding.
 
 - **500 held-out videos** from 10 datasets, **32 embodiments**
+- **11,631 GT atomic facts** across 10 fine-grained capability dimensions
 - **VQA Track**: 1,030 questions across 3 axes (Grounding, Action & Motion, Interaction & State)
 - **Caption Track**: Step-level action description with Consistency, Coverage, and Anti-Hallucination metrics
 
@@ -684,6 +685,6 @@ Benchmark data is hosted on Hugging Face: [xlangai/RoboFine-bench](https://huggi
 |------|-------------|
 | `EvalSets.json` | 500 evaluation samples with GT step annotations, video URLs, and metadata |
 | `QAEvalSets.json` | 1,030 VQA questions with answers, capabilities, and answer types |
-| `GT_AtomicFacts.jsonl` | Pre-extracted GT atomic facts across 10 capability dimensions |
+| `GT_AtomicFacts.jsonl` | 11,631 pre-extracted GT atomic facts across 10 capability dimensions |
 | `frame_index.jsonl` | Pre-uploaded frame URLs for efficient Caption generation |
 | `Videos/` | Robot manipulation video files organized by dataset |

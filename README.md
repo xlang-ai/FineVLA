@@ -47,7 +47,7 @@
 | Component | Description | Status |
 |-----------|-------------|:---:|
 | [**FineVLA-Tool**](FineVLA-Tool/) | Data construction pipeline: format unification, clustering, and fine-grained annotation | Released |
-| [**RoboFine-Bench**](RoboFine-Bench/) | Fine-grained robotic video understanding benchmark (500 videos, 10,816 facts, 1,030 VQA questions) | Released |
+| [**RoboFine-Bench**](RoboFine-Bench/) | Fine-grained robotic video understanding benchmark (500 videos, 11,631 facts, 1,030 VQA questions) | Released |
 | [**FineVLA-Policy**](FineVLA-Policy/) | VLA policy training with fine-grained instruction supervision (StarVLA-based) | Released |
 | [**RoboFine-VLM**](https://huggingface.co/xlangai/RoboFine-VLM-397B-A17B) | Robotics-specialized VLM annotator (fine-tuned Qwen3.5-397B-A17B) | Released |
 | **Model Checkpoints** | Pretrained and fine-tuned policy checkpoints on HuggingFace | Coming Soon |
@@ -139,7 +139,7 @@ RoboFine-Bench evaluates whether VLMs capture execution-level manipulation detai
 - **VQA Track** — 1,030 questions across three axes: Entity & Scene Grounding, Action & Motion Understanding, Interaction & State Reasoning
 - **Caption Track** — Step-level action description with Consistency, Coverage, and Anti-Hallucination metrics under Easy (with instruction) and Hard (vision-only) settings
 
-**500 held-out videos** from 10 datasets, **32 embodiments**, **10,816 atomic facts** — strictly disjoint from all training data.
+**500 held-out videos** from 10 datasets, **32 embodiments**, **11,631 atomic facts** — strictly disjoint from all training data.
 
 For detailed benchmark description, evaluation code, and results, see [RoboFine-Bench on HuggingFace](https://huggingface.co/datasets/xlangai/RoboFine-bench).
 
@@ -147,7 +147,7 @@ For detailed benchmark description, evaluation code, and results, see [RoboFine-
 
 **Problem:** General-purpose VLMs miss execution-level details critical for action-instruction alignment.
 
-RoboFine-VLM is obtained by fine-tuning Qwen3.5-397B-A17B on FineVLA-Data. It achieves **71.0%** VQA accuracy and **83.6%** caption Overall (hard setting) on RoboFine-Bench, outperforming GPT-5.4, Gemini-3.1-Pro, and other strong baselines. It serves as a scalable annotator for extending fine-grained supervision to new trajectories.
+RoboFine-VLM is obtained by fine-tuning Qwen3.5-397B-A17B on FineVLA-Data. With the updated RoboFine-Bench atomic-fact GT, it achieves **68.2%** VQA accuracy and **82.2%** caption Overall (hard setting), outperforming GPT-5.4, Gemini-3.1-Pro, Doubao-Seed-2.0-Pro, and Qwen baselines. It serves as a scalable annotator for extending fine-grained supervision to new trajectories.
 
 ### 4. FineVLA-Policy
 
