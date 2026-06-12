@@ -22,7 +22,7 @@ from config import (
     DEFAULT_REFINEMENT_FPS,
 )
 from prompts import GALAXEA_STEP_SYSTEM_PROMPT
-from .base import BaseDatasetConfig, StageDefinition, DEFAULT_STAGES
+from .base import BaseDatasetConfig, StageDefinition
 
 
 _STEP_REFINEMENT_STAGES = [
@@ -57,7 +57,7 @@ class DroidConfig(BaseDatasetConfig):
         steps_raw = sample.get("steps_raw", [])
         if steps_raw:
             return _STEP_REFINEMENT_STAGES
-        return DEFAULT_STAGES
+        return self.stages
 
     def resolve_stage_views(
         self,

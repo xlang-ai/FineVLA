@@ -54,6 +54,11 @@ def load_jsonl(path: str) -> List[Dict[str, Any]]:
     return samples
 
 
+def has_raw_steps(sample: Dict[str, Any]) -> bool:
+    """Return True when a sample carries pre-annotated step boundaries."""
+    return bool(sample.get("has_raw_steps") or sample.get("steps_raw"))
+
+
 def prepare_samples(
     samples: List[Dict[str, Any]],
     video_base_dir: str = "",
@@ -186,9 +191,9 @@ def main():
 
     # ── Filter by mode ──
     if args.mode == "annotate":
-        samples = [s for s in samples if not s.get("has_raw_steps")]
+        samples = [s for s in samples if not has_raw_steps(s)]
     elif args.mode == "review":
-        samples = [s for s in samples if s.get("has_raw_steps")]
+        samples = [s for s in samples if has_raw_steps(s)]
     logger.info(f"After mode={args.mode} filter: {len(samples)} samples")
 
     # ── Filter by dataset ──
