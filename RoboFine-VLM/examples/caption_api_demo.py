@@ -116,6 +116,9 @@ def main():
     parser.add_argument("--instruction", default="", help="Task instruction, used only in easy mode")
     parser.add_argument("--view", action="append", required=True, type=parse_view_arg,
                         help="role=image_path_or_url; repeat for frames/views")
+    parser.add_argument("--input-type", choices=["image", "video"], default="image",
+                        help="image: send frames as individual image_url parts (SGLang/broad compat); "
+                             "video: group frames as one video part (vLLM)")
     parser.add_argument("--print-request", action="store_true",
                         help="Print request metadata before calling the model")
     parser.add_argument("--print-raw", action="store_true",
@@ -132,11 +135,15 @@ def main():
     content = []
     for i, (role, paths) in enumerate(grouped.items()):
         content.append({"type": "text", "text": f"[View: {classify_view(role, i)}]"})
-        content.append({
-            "type": "video",
-            "video": [image_url(path) for path in paths],
-            "fps": fps,
-        })
+        if args.input_type == "video":
+            content.append({
+                "type": "video",
+                "video": [image_url(path) for path in paths],
+                "fps": fps,
+            })
+        else:
+            for path in paths:
+                content.append({"type": "image_url", "image_url": {"url": image_url(path)}})
     content.append({"type": "text", "text": prompt})
 
     if args.print_request:

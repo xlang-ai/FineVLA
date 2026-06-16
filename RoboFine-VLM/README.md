@@ -27,27 +27,39 @@ These files mirror the parameters currently used in RoboFine-Bench caption evalu
 | Pixel overrides | none: do not set `min_pixels`, `max_pixels`, `total_pixels`, or `mm_processor_kwargs` |
 | Output | JSON only: `{ "Step1": "...", "Step2": "...", "StepN": "..." }` |
 
-## Deploy RoboFine-VLM
+## Environment Setup
 
-Serve RoboFine-VLM through an OpenAI-compatible vLLM endpoint:
+Create a conda environment with the required dependencies:
 
 ```bash
-export CUDA_VISIBLE_DEVICES=0,1,2,3
-export OPENAI_API_KEY=EMPTY
-
-python -m vllm.entrypoints.openai.api_server \
-    --model /path/to/RoboFine-VLM \
-    --served-model-name robofine-vlm \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --trust-remote-code
+conda create -n RoboFine-VLM-vLLM python=3.11 -y
+conda activate RoboFine-VLM-vLLM
 ```
 
-The command used for the current local RoboFine-VLM tests is:
+Install the serving framework (choose one):
+
+```bash
+# Option A: vLLM (supports both image and video input types)
+uv pip install vllm --extra-index-url https://wheels.vllm.ai/nightly
+
+# Option B: SGLang (supports image input type only)
+uv pip install 'sglang[all]' --extra-index-url https://flashinfer.ai/whl/cu129/torch2.10/
+pip install nvidia-cudnn-cu12==9.16.0.29  # required for PyTorch 2.9.x
+```
+
+Install additional dependencies for the demo scripts:
+
+```bash
+pip install openai httpx av
+```
+
+## Deploy RoboFine-VLM
+
+### Option A: vLLM
 
 ```bash
 python -m vllm.entrypoints.openai.api_server \
-    --model /path/to/RoboFine-VLM-opensource \
+    --model /path/to/RoboFine-VLM \
     --host 0.0.0.0 \
     --port 8000 \
     --tensor-parallel-size 8 \
@@ -55,63 +67,56 @@ python -m vllm.entrypoints.openai.api_server \
     --reasoning-parser qwen3 \
     --dtype bfloat16 \
     --enforce-eager \
-    --limit-mm-per-prompt '{"image": 1700}' \
-    --additional-config '{"gdn_prefill_backend": "triton"}'
+    --limit-mm-per-prompt '{"image": 1700}'
 ```
 
-The service endpoint is:
+### Option B: SGLang
 
-```text
-http://localhost:8000/v1
+```bash
+python -m sglang.launch_server \
+    --model-path /path/to/RoboFine-VLM \
+    --port 8000 \
+    --tp-size 8 \
+    --mem-fraction-static 0.8 \
+    --context-length 262144 \
+    --reasoning-parser qwen3 \
+    --trust-remote-code
 ```
 
-Check the service before calling it:
+### Verify
 
 ```bash
 curl http://localhost:8000/v1/models
 ```
 
+The service endpoint is `http://localhost:8000/v1`.
+
 ## Multi-View Request Format
 
-For RoboFine-VLM, the benchmark-compatible request uses sampled image frames
-grouped as OpenAI-compatible `video` parts. Each view is preceded by a dynamic
-view label, and each view's `video` field is a list of base64 JPEG image URLs:
+Two input formats are supported. Use `--input-type image` (default) for broad compatibility across serving frameworks; use `--input-type video` only with vLLM.
+
+**image format** (SGLang, vLLM, and other OpenAI-compatible servers):
 
 ```python
-messages = [
-    {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": "[View: This is the main view of the video.]"},
-            {
-                "type": "video",
-                "video": [
-                    "data:image/jpeg;base64,...",
-                    "data:image/jpeg;base64,...",
-                ],
-                "fps": 4.0,
-            },
-            {"type": "text", "text": "[View: This is the left wrist view of the video.]"},
-            {
-                "type": "video",
-                "video": [
-                    "data:image/jpeg;base64,...",
-                    "data:image/jpeg;base64,...",
-                ],
-                "fps": 4.0,
-            },
-            {"type": "text", "text": "[View: This is the right wrist view of the video.]"},
-            {
-                "type": "video",
-                "video": [
-                    "data:image/jpeg;base64,...",
-                    "data:image/jpeg;base64,...",
-                ],
-                "fps": 4.0,
-            },
-            {"type": "text", "text": RB_NEW_CAPTION_PROMPT},
-        ],
-    }
+content = [
+    {"type": "text", "text": "[View: This is the main view of the video.]"},
+    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}},
+    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}},
+    {"type": "text", "text": "[View: This is the left wrist view of the video.]"},
+    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}},
+    {"type": "text", "text": RB_NEW_CAPTION_PROMPT},
+]
+```
+
+**video format** (vLLM only):
+
+```python
+content = [
+    {"type": "text", "text": "[View: This is the main view of the video.]"},
+    {"type": "video", "video": ["data:image/jpeg;base64,...", "data:image/jpeg;base64,..."], "fps": 4.0},
+    {"type": "text", "text": "[View: This is the left wrist view of the video.]"},
+    {"type": "video", "video": ["data:image/jpeg;base64,..."], "fps": 4.0},
+    {"type": "text", "text": RB_NEW_CAPTION_PROMPT},
 ]
 ```
 
@@ -128,9 +133,7 @@ client.chat.completions.create(
 )
 ```
 
-`image_url` parts are also accepted by the local vLLM service, but the default
-reported setting is the grouped `type="video"` frame-list format above because
-it preserves the video sequence and `fps=4.0` explicitly.
+`image_url` parts (`--input-type image`, default) are recommended for broad compatibility across serving frameworks. Use `--input-type video` only with vLLM.
 
 ## Run Caption Annotation On RoboFine-Bench
 
@@ -188,8 +191,9 @@ cd /cpfs01/data/shared/Group-m6/tongzai.hxt/FineVLA/RoboFine-VLM
 
 python examples/caption_video_demo.py \
     --base-url http://localhost:8000/v1 \
-    --model /cpfs01/data/shared/Group-m6/tongzai.hxt/RoboFine-VLM-opensource \
+    --model /path/to/RoboFine-VLM \
     --mode hard \
+    --input-type image \
     --print-request
 ```
 
@@ -202,7 +206,7 @@ The script:
 - encodes sampled frames as `data:image/jpeg;base64,...`
 - keeps all provided views
 - inserts dynamic `[View: ...]` labels
-- sends each view as one OpenAI-compatible `video` part whose `video` field is a list of base64 image URLs
+- sends each view as individual `image_url` parts (default `--input-type image`) or as one `video` part (`--input-type video`, vLLM only)
 - uses `temperature=0.0`, `top_p=0.95`, `max_tokens=32768`
 - for local RoboFine/Qwen vLLM endpoints, sends `extra_body={"chat_template_kwargs": {"enable_thinking": false}}`
 - sends no pixel overrides
@@ -216,6 +220,7 @@ python examples/caption_video_demo.py \
     --base-url http://localhost:8000/v1 \
     --model robofine-vlm \
     --mode easy \
+    --input-type image \
     --instruction "open the drawer and place the item inside" \
     --view main=/path/to/main.mp4 \
     --view left_wrist=/path/to/left_wrist.mp4 \
@@ -239,6 +244,7 @@ python examples/caption_api_demo.py \
     --base-url http://localhost:8000/v1 \
     --model robofine-vlm \
     --mode hard \
+    --input-type image \
     --view main=/path/to/main_000.jpg \
     --view main=/path/to/main_001.jpg \
     --view left_wrist=/path/to/left_000.jpg \
@@ -246,7 +252,7 @@ python examples/caption_api_demo.py \
     --print-request
 ```
 
-The demo sends each actual view as one `video` part containing sampled frame images and attaches `fps=4.0`, matching the benchmark call. View labels are generated dynamically from the role names passed through `--view`.
+The demo sends each view's frames as individual `image_url` parts (default) or grouped as one `video` part (`--input-type video`, vLLM only). View labels are generated dynamically from the role names passed through `--view`.
 
 For Easy mode:
 
@@ -255,6 +261,7 @@ python examples/caption_api_demo.py \
     --base-url http://localhost:8000/v1 \
     --model robofine-vlm \
     --mode easy \
+    --input-type image \
     --instruction "pick up the cup and place it on the plate" \
     --view main=/path/to/main_000.jpg
 ```

@@ -104,6 +104,9 @@ def main():
                         help="role=/path/to/video.mp4; repeat for multi-view input")
     parser.add_argument("--max-frames-per-view", type=int, default=int(bench.get("max_frames_per_view", 512)))
     parser.add_argument("--resize-width", type=int, default=bench.get("resize_width", 512))
+    parser.add_argument("--input-type", choices=["image", "video"], default="image",
+                        help="image: send frames as individual image_url parts (SGLang/broad compat); "
+                             "video: group frames as one video part (vLLM)")
     parser.add_argument("--print-request", action="store_true")
     parser.add_argument("--print-raw", action="store_true")
     args = parser.parse_args()
@@ -129,7 +132,11 @@ def main():
         )
         metas.append({"role": role, **meta})
         content.append({"type": "text", "text": f"[View: {classify_view(role, i)}]"})
-        content.append({"type": "video", "video": frame_urls, "fps": fps})
+        if args.input_type == "video":
+            content.append({"type": "video", "video": frame_urls, "fps": fps})
+        else:
+            for url in frame_urls:
+                content.append({"type": "image_url", "image_url": {"url": url}})
     content.append({"type": "text", "text": prompt})
 
     if args.print_request:
