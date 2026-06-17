@@ -53,6 +53,20 @@ run_mode() {
         echo "Time: $(date)"
         echo "=========================================="
 
+        FILTER_DIR="${CAPTION_DIR}/.filtered"
+        FILTERED_CAPTION_PATH="${FILTER_DIR}/${CAPTION_FILE%.jsonl}.success.jsonl"
+        FAILED_CAPTION_PATH="${FILTER_DIR}/${CAPTION_FILE%.jsonl}.failed.jsonl"
+        python3 caption_eval/filter_caption_results.py \
+            --input "${CAPTION_PATH}" \
+            --success-output "${FILTERED_CAPTION_PATH}" \
+            --failed-output "${FAILED_CAPTION_PATH}"
+
+        FAILED_COUNT="$(wc -l < "${FAILED_CAPTION_PATH}" | tr -d ' ')"
+        if [ "${FAILED_COUNT}" != "0" ]; then
+            echo "[WARN] ${MODEL_NAME} (${mode}) has ${FAILED_COUNT} failed/empty caption records."
+            echo "[WARN] Failed records written to ${FAILED_CAPTION_PATH}"
+        fi
+
         # Skip models that already have complete outputs; rerun only missing/failed ones.
         if [ -f "${OUTPUT_DIR}/scored_results.jsonl" ] && [ -s "${OUTPUT_DIR}/scored_results.jsonl" ] \
            && [ -f "${OUTPUT_DIR}/direct_align_raw.jsonl" ] && [ -s "${OUTPUT_DIR}/direct_align_raw.jsonl" ] \
@@ -64,7 +78,7 @@ run_mode() {
 
         python3 -m caption_eval.atomic_eval.atomic_eval direct-align \
             --gt-facts "${GT_FACTS}" \
-            --caption "${CAPTION_PATH}" \
+            --caption "${FILTERED_CAPTION_PATH}" \
             --output-dir "${OUTPUT_DIR}" \
             --num-workers "${NUM_WORKERS}" \
             --enable-thinking

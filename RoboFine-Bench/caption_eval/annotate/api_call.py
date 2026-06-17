@@ -22,6 +22,7 @@ DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 MAX_RETRIES = 5
 DOUBAO_MAX_FRAMES = 150
 GPT_MAX_FRAMES = 250
+QWEN_MAX_DATA_URI_FRAMES = 240
 
 
 # ---------------------------------------------------------------------------
@@ -439,6 +440,22 @@ def _call_openai_compatible(client, image_parts, system_prompt, user_prompt, mod
             image_parts = _subsample_multiview_parts(image_parts, GPT_MAX_FRAMES)
         else:
             image_parts = _subsample_parts(image_parts, GPT_MAX_FRAMES)
+
+    if _is_qwen_model(model) and not video_urls:
+        frame_count = sum(1 for p in image_parts if p.get("type") == "image_url")
+        has_data_uri = any(
+            p.get("image_url", {}).get("url", "").startswith("data:")
+            for p in image_parts if p.get("type") == "image_url"
+        )
+        if has_data_uri and frame_count > QWEN_MAX_DATA_URI_FRAMES:
+            if has_views:
+                image_parts = _subsample_multiview_parts(image_parts, QWEN_MAX_DATA_URI_FRAMES)
+            else:
+                image_parts = _subsample_parts(image_parts, QWEN_MAX_DATA_URI_FRAMES)
+            logger.info(
+                f"Qwen: subsampled data-uri frames {frame_count} -> "
+                f"{sum(1 for p in image_parts if p.get('type') == 'image_url')}"
+            )
 
     if video_urls and _is_qwen_model(model):
         combined_text = f"{system_prompt.strip()}\n\n{user_prompt}" if system_prompt else user_prompt
