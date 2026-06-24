@@ -48,7 +48,6 @@
 |-----------|-------------|:---:|
 | [**FineVLA-Tool**](FineVLA-Tool/) | Data construction pipeline: format unification, clustering, and fine-grained annotation | Released |
 | [**RoboFine-Bench**](RoboFine-Bench/) | Fine-grained robotic video understanding benchmark (500 videos, 11,631 facts, 1,030 VQA questions) | Released |
-| [**FineVLA-Policy**](FineVLA-Policy/) | VLA policy training with fine-grained instruction supervision (StarVLA-based) | Released |
 | [**RoboFine-VLM**](https://huggingface.co/xlangai/RoboFine-VLM-397B-A17B) | Robotics-specialized VLM annotator (fine-tuned Qwen3.5-397B-A17B) | Released |
 
 ## Getting Started
