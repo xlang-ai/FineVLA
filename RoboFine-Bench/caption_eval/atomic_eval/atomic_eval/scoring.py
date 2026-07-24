@@ -77,13 +77,12 @@ def compute_sample_scores(alignment: AlignmentResult) -> SampleScores:
         cap_scores_list=cap_scores,
     )
 
-    # Anti-Hallucination: 1 - H / G_action_sequence
-    # H only exists for action_sequence; denominator is GT action fact count
+    # Anti-Hallucination: 1 - H / C_action_sequence (consistent with per-capability formula)
     action_cs = next(
         (cs for cs in cap_scores if cs.capability == "action_sequence"), None
     )
-    if action_cs and action_cs.G > 0:
-        weighted_anti_hallucination = 1.0 - (action_cs.H / action_cs.G)
+    if action_cs and action_cs.C > 0:
+        weighted_anti_hallucination = 1.0 - (action_cs.H / action_cs.C)
     else:
         weighted_anti_hallucination = 1.0
 
