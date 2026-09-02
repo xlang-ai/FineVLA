@@ -62,7 +62,7 @@ run_id=0224_${Framework_name}_${data_mix}_256
 ###########################################################################################
 
 export WANDB_BASE_URL='http://47.92.143.221:7900/'
-export WANDB_API_KEY='local-1647bcc5479ab0da87b5c153002383e4c8a83867'
+export WANDB_API_KEY="${WANDB_API_KEY:-}"
 # export WANDB_MODE=disabled
 
 output_dir=${run_root_dir}/${run_id}

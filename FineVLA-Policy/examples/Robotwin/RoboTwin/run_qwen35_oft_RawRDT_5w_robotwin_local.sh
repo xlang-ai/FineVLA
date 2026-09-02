@@ -6,7 +6,7 @@ export OMP_NUM_THREADS=4
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TOKENIZERS_PARALLELISM=false
 export WANDB_BASE_URL="http://47.92.143.221:7900/"
-export WANDB_API_KEY="local-1647bcc5479ab0da87b5c153002383e4c8a83867"
+export WANDB_API_KEY="${WANDB_API_KEY:-}"
 
 source /root/miniconda3/etc/profile.d/conda.sh
 conda activate starVLA

@@ -45,7 +45,7 @@ subfix=`date "+%H-%M"`
 
 echo "RUNNING:"
 export WANDB_BASE_URL='http://47.92.143.221:7900/'
-export WANDB_API_KEY='local-1647bcc5479ab0da87b5c153002383e4c8a83867'
+export WANDB_API_KEY="${WANDB_API_KEY:-}"
 # export WANDB_MODE=disabled
 
 ###########################################################################################

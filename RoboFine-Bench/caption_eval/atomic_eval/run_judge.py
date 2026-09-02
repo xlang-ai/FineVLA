@@ -69,7 +69,6 @@ CAPABILITIES = [
     'gripper_state', 'temporal_order_and_step_boundary', 'body_motion'
 ]
 
-# APIKey="sk-e8b188af33504bc0ba158bebf2c9a110"
 DEFAULT_MODEL = "openai.gpt-5.4-2026-03-05"
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_TEMPERATURE = 0.1  # Low temperature for more consistent judgments
